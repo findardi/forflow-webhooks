@@ -1,0 +1,19 @@
+services:
+  forflow-pg:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: forflow
+      POSTGRES_PASSWORD: forflowpassword
+      POSTGRES_DB: forflow_webhooks
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U forflow -d forflow_webhooks"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:
