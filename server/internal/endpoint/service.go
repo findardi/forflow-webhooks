@@ -7,14 +7,14 @@ import (
 	"net/url"
 
 	"github.com/findardi/forflow-webhooks/server/db/store/sqlc"
+	"github.com/findardi/forflow-webhooks/server/internal/helper"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 var (
 	ErrInvalidURL           = errors.New("invalid url")
 	ErrInvalidApplicationID = errors.New("invalid application_id")
-	ErrAlreadyUsed          = errors.New("already exists")
+	ErrEndpointExists       = errors.New("endpoint url already registered for this application")
 )
 
 type Service struct {
@@ -25,20 +25,6 @@ func NewService(q *sqlc.Queries) *Service {
 	return &Service{
 		q: q,
 	}
-}
-
-func toUUID(u string) (pgtype.UUID, error) {
-	var id pgtype.UUID
-
-	if u == "" {
-		return id, nil
-	}
-
-	if err := id.Scan(u); err != nil {
-		return id, fmt.Errorf("parse to uuid: %w", err)
-	}
-
-	return id, nil
 }
 
 func validateURL(raw string) error {
@@ -58,28 +44,42 @@ func validateURL(raw string) error {
 	return nil
 }
 
-func (s *Service) CreateEndpoint(ctx context.Context, request CreateEndpoint) (sqlc.Endpoint, error) {
-	if err := validateURL(request.Url); err != nil {
+func (s *Service) Create(ctx context.Context, request CreateRequest) (sqlc.Endpoint, error) {
+	if err := validateURL(request.URL); err != nil {
 		return sqlc.Endpoint{}, err
 	}
 
-	appID, err := toUUID(request.ApplicationID)
+	appID, err := helper.ToUUID(request.ApplicationID)
 	if err != nil {
 		return sqlc.Endpoint{}, fmt.Errorf("%w: %w", ErrInvalidApplicationID, err)
 	}
 
 	result, err := s.q.CreateEndpoint(ctx, sqlc.CreateEndpointParams{
 		ApplicationID: appID,
-		Url:           request.Url,
+		Url:           request.URL,
 	})
 
 	if err != nil {
 		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-			return sqlc.Endpoint{}, ErrAlreadyUsed
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" { // unique_violation
+			return sqlc.Endpoint{}, ErrEndpointExists
 		}
 
 		return sqlc.Endpoint{}, fmt.Errorf("create endpoint: %w", err)
+	}
+
+	return result, nil
+}
+
+func (s *Service) ListByApplication(ctx context.Context, applicationID string) ([]sqlc.Endpoint, error) {
+	appID, err := helper.ToUUID(applicationID)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrInvalidApplicationID, err)
+	}
+
+	result, err := s.q.ListEndpointsByApplicationID(ctx, appID)
+	if err != nil {
+		return nil, fmt.Errorf("list endpoints: %w", err)
 	}
 
 	return result, nil

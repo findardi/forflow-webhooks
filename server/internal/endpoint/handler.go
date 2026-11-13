@@ -19,29 +19,40 @@ func NewHandler(pool *pgxpool.Pool) *Handler {
 	}
 }
 
-func (h *Handler) CreateEndpoint(w http.ResponseWriter, r *http.Request) {
-	var req CreateEndpoint
+func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
+	var req CreateRequest
 
 	if !helper.DecodeJSON(w, r, &req) {
 		return
 	}
+	req.ApplicationID = r.PathValue("appID")
 
-	appID := r.URL.Query().Get("application_id")
-	if appID == "" {
-		http.Error(w, "application_id is required", http.StatusBadRequest)
-		return
-	}
-	req.ApplicationID = appID
-
-	result, err := h.svc.CreateEndpoint(r.Context(), req)
+	result, err := h.svc.Create(r.Context(), req)
 	if err != nil {
-		if errors.Is(err, ErrInvalidURL) || errors.Is(err, ErrInvalidApplicationID) {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+		writeError(w, err)
 		return
 	}
 
 	helper.WriteJSON(w, http.StatusCreated, result)
+}
+
+func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
+	result, err := h.svc.ListByApplication(r.Context(), r.PathValue("appID"))
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+
+	helper.WriteJSON(w, http.StatusOK, result)
+}
+
+func writeError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, ErrInvalidURL), errors.Is(err, ErrInvalidApplicationID):
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	case errors.Is(err, ErrEndpointExists):
+		http.Error(w, err.Error(), http.StatusConflict)
+	default:
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+	}
 }

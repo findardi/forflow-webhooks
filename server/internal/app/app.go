@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/findardi/forflow-webhooks/server/db"
+	"github.com/findardi/forflow-webhooks/server/internal/application"
 	"github.com/findardi/forflow-webhooks/server/internal/config"
 	"github.com/findardi/forflow-webhooks/server/internal/endpoint"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -56,13 +57,22 @@ func RunAPI(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 func NewRouter(pool *pgxpool.Pool) http.Handler {
 	mux := http.NewServeMux()
 
-	EndpointRouter(mux, pool)
+	registerApplicationRoutes(mux, pool)
+	registerEndpointRoutes(mux, pool)
 
 	return mux
 }
 
-func EndpointRouter(mux *http.ServeMux, pool *pgxpool.Pool) {
+func registerApplicationRoutes(mux *http.ServeMux, pool *pgxpool.Pool) {
+	h := application.NewHandler(pool)
+
+	mux.HandleFunc("POST /applications", h.Create)
+	mux.HandleFunc("GET /applications", h.List)
+}
+
+func registerEndpointRoutes(mux *http.ServeMux, pool *pgxpool.Pool) {
 	h := endpoint.NewHandler(pool)
 
-	mux.HandleFunc("POST /endpoints", h.CreateEndpoint)
+	mux.HandleFunc("POST /applications/{appID}/endpoints", h.Create)
+	mux.HandleFunc("GET /applications/{appID}/endpoints", h.List)
 }

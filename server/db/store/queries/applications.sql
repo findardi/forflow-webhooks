@@ -4,3 +4,7 @@ insert into applications
 values
     ($1)
 returning *;
+
+-- name: ListApplications :many
+select * from applications
+order by created_at asc;

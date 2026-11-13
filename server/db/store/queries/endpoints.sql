@@ -5,9 +5,7 @@ values
     ($1, $2)
 returning *;
 
--- name: GetByAppIdandURL :one
+-- name: ListEndpointsByApplicationID :many
 select * from endpoints
-where 
-    application_id = $1
-and
-    url = $2;
+where application_id = $1
+order by created_at asc;

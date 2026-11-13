@@ -36,27 +36,33 @@ func (q *Queries) CreateEndpoint(ctx context.Context, arg CreateEndpointParams) 
 	return i, err
 }
 
-const getByAppIdandURL = `-- name: GetByAppIdandURL :one
+const listEndpointsByApplicationID = `-- name: ListEndpointsByApplicationID :many
 select id, application_id, url, created_at from endpoints
-where 
-    application_id = $1
-and
-    url = $2
+where application_id = $1
+order by created_at asc
 `
 
-type GetByAppIdandURLParams struct {
-	ApplicationID pgtype.UUID
-	Url           string
-}
-
-func (q *Queries) GetByAppIdandURL(ctx context.Context, arg GetByAppIdandURLParams) (Endpoint, error) {
-	row := q.db.QueryRow(ctx, getByAppIdandURL, arg.ApplicationID, arg.Url)
-	var i Endpoint
-	err := row.Scan(
-		&i.ID,
-		&i.ApplicationID,
-		&i.Url,
-		&i.CreatedAt,
-	)
-	return i, err
+func (q *Queries) ListEndpointsByApplicationID(ctx context.Context, applicationID pgtype.UUID) ([]Endpoint, error) {
+	rows, err := q.db.Query(ctx, listEndpointsByApplicationID, applicationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Endpoint{}
+	for rows.Next() {
+		var i Endpoint
+		if err := rows.Scan(
+			&i.ID,
+			&i.ApplicationID,
+			&i.Url,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

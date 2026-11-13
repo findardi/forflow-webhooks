@@ -28,3 +28,33 @@ func (q *Queries) CreateApplication(ctx context.Context, name string) (Applicati
 	)
 	return i, err
 }
+
+const listApplications = `-- name: ListApplications :many
+select id, name, created_at, deleted_at from applications
+order by created_at asc
+`
+
+func (q *Queries) ListApplications(ctx context.Context) ([]Application, error) {
+	rows, err := q.db.Query(ctx, listApplications)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Application{}
+	for rows.Next() {
+		var i Application
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.CreatedAt,
+			&i.DeletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
