@@ -40,3 +40,6 @@ db-up:
 
 db-down:
 	$(DB_DEV_COMPOSE) down
+
+run-api:
+	cd server && go run ./cmd/api/
