@@ -1,6 +1,7 @@
 package application
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/findardi/forflow-webhooks/server/db/store/sqlc"
@@ -26,6 +27,10 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	result, err := h.svc.Create(r.Context(), req)
+	if errors.Is(err, ErrInvalidName) {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 	if err != nil {
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return

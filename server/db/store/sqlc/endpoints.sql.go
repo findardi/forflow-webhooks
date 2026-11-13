@@ -20,8 +20,8 @@ returning id, application_id, url, created_at
 `
 
 type CreateEndpointParams struct {
-	ApplicationID pgtype.UUID
-	Url           string
+	ApplicationID pgtype.UUID `json:"application_id"`
+	Url           string      `json:"url"`
 }
 
 func (q *Queries) CreateEndpoint(ctx context.Context, arg CreateEndpointParams) (Endpoint, error) {

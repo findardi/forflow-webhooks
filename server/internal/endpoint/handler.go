@@ -50,6 +50,8 @@ func writeError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, ErrInvalidURL), errors.Is(err, ErrInvalidApplicationID):
 		http.Error(w, err.Error(), http.StatusBadRequest)
+	case errors.Is(err, ErrApplicationNotFound):
+		http.Error(w, err.Error(), http.StatusNotFound)
 	case errors.Is(err, ErrEndpointExists):
 		http.Error(w, err.Error(), http.StatusConflict)
 	default:

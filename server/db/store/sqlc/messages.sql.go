@@ -20,8 +20,8 @@ returning id, application_id, payload, created_at
 `
 
 type CreateMessagesParams struct {
-	ApplicationID pgtype.UUID
-	Payload       []byte
+	ApplicationID pgtype.UUID `json:"application_id"`
+	Payload       []byte      `json:"payload"`
 }
 
 func (q *Queries) CreateMessages(ctx context.Context, arg CreateMessagesParams) (Message, error) {

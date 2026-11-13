@@ -9,22 +9,22 @@ import (
 )
 
 type Application struct {
-	ID        pgtype.UUID
-	Name      string
-	CreatedAt pgtype.Timestamptz
-	DeletedAt pgtype.Timestamptz
+	ID        pgtype.UUID        `json:"id"`
+	Name      string             `json:"name"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	DeletedAt pgtype.Timestamptz `json:"deleted_at"`
 }
 
 type Endpoint struct {
-	ID            pgtype.UUID
-	ApplicationID pgtype.UUID
-	Url           string
-	CreatedAt     pgtype.Timestamptz
+	ID            pgtype.UUID        `json:"id"`
+	ApplicationID pgtype.UUID        `json:"application_id"`
+	Url           string             `json:"url"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
 }
 
 type Message struct {
-	ID            pgtype.UUID
-	ApplicationID pgtype.UUID
-	Payload       []byte
-	CreatedAt     pgtype.Timestamptz
+	ID            pgtype.UUID        `json:"id"`
+	ApplicationID pgtype.UUID        `json:"application_id"`
+	Payload       []byte             `json:"payload"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
 }

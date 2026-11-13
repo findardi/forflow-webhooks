@@ -15,6 +15,7 @@ var (
 	ErrInvalidURL           = errors.New("invalid url")
 	ErrInvalidApplicationID = errors.New("invalid application_id")
 	ErrEndpointExists       = errors.New("endpoint url already registered for this application")
+	ErrApplicationNotFound  = errors.New("application not found")
 )
 
 type Service struct {
@@ -61,8 +62,13 @@ func (s *Service) Create(ctx context.Context, request CreateRequest) (sqlc.Endpo
 
 	if err != nil {
 		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == "23505" { // unique_violation
-			return sqlc.Endpoint{}, ErrEndpointExists
+		if errors.As(err, &pgErr) {
+			switch pgErr.Code {
+			case "23505": // unique_violation
+				return sqlc.Endpoint{}, ErrEndpointExists
+			case "23503": // foreign_key_violation
+				return sqlc.Endpoint{}, ErrApplicationNotFound
+			}
 		}
 
 		return sqlc.Endpoint{}, fmt.Errorf("create endpoint: %w", err)
