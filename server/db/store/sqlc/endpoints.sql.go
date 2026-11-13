@@ -35,3 +35,28 @@ func (q *Queries) CreateEndpoint(ctx context.Context, arg CreateEndpointParams) 
 	)
 	return i, err
 }
+
+const getByAppIdandURL = `-- name: GetByAppIdandURL :one
+select id, application_id, url, created_at from endpoints
+where 
+    application_id = $1
+and
+    url = $2
+`
+
+type GetByAppIdandURLParams struct {
+	ApplicationID pgtype.UUID
+	Url           string
+}
+
+func (q *Queries) GetByAppIdandURL(ctx context.Context, arg GetByAppIdandURLParams) (Endpoint, error) {
+	row := q.db.QueryRow(ctx, getByAppIdandURL, arg.ApplicationID, arg.Url)
+	var i Endpoint
+	err := row.Scan(
+		&i.ID,
+		&i.ApplicationID,
+		&i.Url,
+		&i.CreatedAt,
+	)
+	return i, err
+}

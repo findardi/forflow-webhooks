@@ -4,3 +4,10 @@ insert into endpoints
 values
     ($1, $2)
 returning *;
+
+-- name: GetByAppIdandURL :one
+select * from endpoints
+where 
+    application_id = $1
+and
+    url = $2;
