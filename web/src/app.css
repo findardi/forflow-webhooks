@@ -1,0 +1,186 @@
+:root {
+	--ground: #f3f3f1;
+	--panel: #ffffff;
+	--panel-sunk: #f7f7f5;
+	--rule: #e2e2df;
+	--rule-soft: #eeeeeb;
+	--field: #cfcfca;
+	--ink: #2b2b2b;
+	--ink-2: #5e5e5a;
+	--ink-3: #6f6f6b;
+	--grille: #c9c9c4;
+	--key: #237a45;
+	--key-press: #1b6237;
+	--error: #a23b12;
+	--error-dot: #e0662a;
+
+	--sans: 'Hanken Grotesk', system-ui, sans-serif;
+	--mono: 'JetBrains Mono', ui-monospace, monospace;
+	--radius: 10px;
+	--radius-s: 6px;
+
+	color-scheme: light;
+	accent-color: var(--key);
+	caret-color: var(--ink);
+}
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+body {
+	margin: 0;
+	background: var(--ground);
+	color: var(--ink);
+	font: 15px/1.5 var(--sans);
+	-webkit-font-smoothing: antialiased;
+}
+
+::selection {
+	background: #dcdcd7;
+	color: var(--ink);
+}
+
+:focus-visible {
+	outline: 2px solid var(--ink);
+	outline-offset: 2px;
+}
+
+* {
+	scrollbar-width: thin;
+	scrollbar-color: var(--grille) transparent;
+}
+
+h1,
+h2,
+p {
+	margin: 0;
+}
+
+a {
+	color: inherit;
+	text-underline-offset: 3px;
+}
+
+.mono {
+	font-family: var(--mono);
+	font-size: 13px;
+	font-variant-ligatures: none;
+}
+
+.label {
+	font-size: 12px;
+	font-weight: 600;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--ink-2);
+}
+
+.panel {
+	background: var(--panel);
+	border: 1px solid var(--rule);
+	border-radius: var(--radius);
+	min-width: 0;
+}
+
+.field {
+	flex: 1 1 auto;
+	min-width: 0;
+	height: 42px;
+	padding: 0 12px;
+	border: 1px solid var(--field);
+	border-radius: var(--radius-s);
+	background: var(--panel);
+	color: var(--ink);
+	font: inherit;
+}
+
+.field.mono {
+	font-family: var(--mono);
+	font-size: 13px;
+}
+
+.field::placeholder {
+	color: var(--ink-3);
+}
+
+.field:hover {
+	border-color: var(--ink-3);
+}
+
+.field[aria-invalid='true'] {
+	border-color: var(--error);
+}
+
+.btn {
+	height: 42px;
+	padding: 0 18px;
+	border-radius: var(--radius-s);
+	font: 600 15px var(--sans);
+	white-space: nowrap;
+	cursor: pointer;
+	transition:
+		background-color 120ms ease-out,
+		transform 80ms ease-out;
+}
+
+.btn:active {
+	transform: translateY(1px);
+}
+
+.btn:disabled {
+	cursor: progress;
+	opacity: 0.6;
+}
+
+.btn-ghost {
+	border: 1px solid var(--ink);
+	background: transparent;
+	color: var(--ink);
+}
+
+.btn-ghost:hover {
+	background: var(--panel-sunk);
+}
+
+/* The key: the only colour on screen, reserved for the primary action. */
+.btn-key {
+	border: 0;
+	background: var(--key);
+	color: #fff;
+}
+
+.btn-key:hover {
+	background: var(--key-press);
+}
+
+.error {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	color: var(--error);
+	font-weight: 500;
+}
+
+.error::before {
+	content: '';
+	flex: none;
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: var(--error-dot);
+}
+
+/* Speaker-grille dot field: the one ornament, used for empty states. */
+.grille {
+	background-image: radial-gradient(var(--grille) 1.6px, transparent 1.7px);
+	background-size: 8px 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	* {
+		transition: none !important;
+	}
+}

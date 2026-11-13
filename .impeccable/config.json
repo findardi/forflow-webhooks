@@ -1,0 +1,62 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "design-system-font",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/decision/assigned.html"
+        ],
+        "createdAt": "2026-11-13T08:23:14.077Z",
+        "reason": "model: unchosen decision-round mock in another visual world; not shipped"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/decision/model-pick.html"
+        ],
+        "createdAt": "2026-11-13T08:23:14.092Z",
+        "reason": "model: unchosen decision-round mock in another visual world; not shipped"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/decision/challenger-wallet.html"
+        ],
+        "createdAt": "2026-11-13T08:23:14.107Z",
+        "reason": "model: unchosen decision-round mock in another visual world; not shipped"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/decision/canon.html"
+        ],
+        "createdAt": "2026-11-13T08:23:14.122Z",
+        "reason": "model: unchosen decision-round mock in another visual world; not shipped"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/decision/assigned-r1.html"
+        ],
+        "createdAt": "2026-11-13T08:23:14.137Z",
+        "reason": "model: unchosen decision-round mock in another visual world; not shipped"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/decision/pick-r1.html"
+        ],
+        "createdAt": "2026-11-13T08:23:14.151Z",
+        "reason": "model: unchosen decision-round mock in another visual world; not shipped"
+      }
+    ]
+  }
+}
