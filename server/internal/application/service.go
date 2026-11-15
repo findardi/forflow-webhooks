@@ -8,19 +8,27 @@ import (
 	"unicode/utf8"
 
 	"github.com/findardi/forflow-webhooks/server/db/store/sqlc"
+	"github.com/findardi/forflow-webhooks/server/internal/helper"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 const maxNameLength = 100
 
-var ErrInvalidName = errors.New("invalid name")
+var (
+	ErrInvalidName          = errors.New("invalid name")
+	ErrInvalidApplicationID = errors.New("invalid application_id")
+	ErrApplicationNotFound  = errors.New("application not found")
+)
 
 type Service struct {
-	q *sqlc.Queries
+	q    *sqlc.Queries
+	pool *pgxpool.Pool
 }
 
-func NewService(q *sqlc.Queries) *Service {
+func NewService(pool *pgxpool.Pool) *Service {
 	return &Service{
-		q: q,
+		q:    sqlc.New(pool),
+		pool: pool,
 	}
 }
 
@@ -48,4 +56,39 @@ func (s *Service) List(ctx context.Context) ([]sqlc.Application, error) {
 	}
 
 	return result, nil
+}
+
+func (s *Service) Delete(ctx context.Context, applicationID string) error {
+	appID, err := helper.ToUUID(applicationID)
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrInvalidApplicationID, err)
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin delete: %w", err)
+	}
+
+	defer func() {
+		_ = tx.Rollback(context.WithoutCancel(ctx))
+	}()
+
+	q := s.q.WithTx(tx)
+
+	rows, err := q.DeleteApplication(ctx, appID)
+	if err != nil {
+		return fmt.Errorf("delete application: %w", err)
+	}
+	if rows == 0 {
+		return ErrApplicationNotFound
+	}
+
+	if err := q.DeleteEndpointsByApplication(ctx, appID); err != nil {
+		return fmt.Errorf("delete endpoints: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit delete: %w", err)
+	}
+
+	return nil
 }

@@ -8,23 +8,27 @@ import (
 
 	"github.com/findardi/forflow-webhooks/server/db/store/sqlc"
 	"github.com/findardi/forflow-webhooks/server/internal/helper"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 var (
 	ErrInvalidURL           = errors.New("invalid url")
 	ErrInvalidApplicationID = errors.New("invalid application_id")
+	ErrInvalidEndpointID    = errors.New("invalid endpoint_id")
 	ErrEndpointExists       = errors.New("endpoint url already registered for this application")
 	ErrApplicationNotFound  = errors.New("application not found")
+	ErrEndpointNotFound     = errors.New("endpoint not found")
 )
 
 type Service struct {
 	q *sqlc.Queries
 }
 
-func NewService(q *sqlc.Queries) *Service {
+func NewService(pool *pgxpool.Pool) *Service {
 	return &Service{
-		q: q,
+		q: sqlc.New(pool),
 	}
 }
 
@@ -61,14 +65,14 @@ func (s *Service) Create(ctx context.Context, request CreateRequest) (sqlc.Endpo
 	})
 
 	if err != nil {
+		// No row inserted: application missing or soft-deleted.
+		if errors.Is(err, pgx.ErrNoRows) {
+			return sqlc.Endpoint{}, ErrApplicationNotFound
+		}
+
 		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) {
-			switch pgErr.Code {
-			case "23505": // unique_violation
-				return sqlc.Endpoint{}, ErrEndpointExists
-			case "23503": // foreign_key_violation
-				return sqlc.Endpoint{}, ErrApplicationNotFound
-			}
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" { // unique_violation
+			return sqlc.Endpoint{}, ErrEndpointExists
 		}
 
 		return sqlc.Endpoint{}, fmt.Errorf("create endpoint: %w", err)
@@ -89,4 +93,26 @@ func (s *Service) ListByApplication(ctx context.Context, applicationID string) (
 	}
 
 	return result, nil
+}
+
+func (s *Service) Delete(ctx context.Context, applicationID, endpointID string) error {
+	appID, err := helper.ToUUID(applicationID)
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrInvalidApplicationID, err)
+	}
+
+	eID, err := helper.ToUUID(endpointID)
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrInvalidEndpointID, err)
+	}
+
+	rows, err := s.q.DeleteEndpoint(ctx, sqlc.DeleteEndpointParams{ID: eID, ApplicationID: appID})
+	if err != nil {
+		return fmt.Errorf("delete endpoint: %w", err)
+	}
+	if rows == 0 {
+		return ErrEndpointNotFound
+	}
+
+	return nil
 }

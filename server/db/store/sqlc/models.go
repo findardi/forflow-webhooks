@@ -20,6 +20,7 @@ type Endpoint struct {
 	ApplicationID pgtype.UUID        `json:"application_id"`
 	Url           string             `json:"url"`
 	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	DeletedAt     pgtype.Timestamptz `json:"deleted_at"`
 }
 
 type Message struct {

@@ -7,6 +7,8 @@ package sqlc
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createApplication = `-- name: CreateApplication :one
@@ -29,8 +31,23 @@ func (q *Queries) CreateApplication(ctx context.Context, name string) (Applicati
 	return i, err
 }
 
+const deleteApplication = `-- name: DeleteApplication :execrows
+update applications
+set deleted_at = now()
+where id = $1 and deleted_at is null
+`
+
+func (q *Queries) DeleteApplication(ctx context.Context, id pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteApplication, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const listApplications = `-- name: ListApplications :many
 select id, name, created_at, deleted_at from applications
+where deleted_at is null
 order by created_at asc
 `
 

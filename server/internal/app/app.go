@@ -68,6 +68,7 @@ func registerApplicationRoutes(mux *http.ServeMux, pool *pgxpool.Pool) {
 
 	mux.HandleFunc("POST /applications", h.Create)
 	mux.HandleFunc("GET /applications", h.List)
+	mux.HandleFunc("DELETE /applications/{appID}", h.Delete)
 }
 
 func registerEndpointRoutes(mux *http.ServeMux, pool *pgxpool.Pool) {
@@ -75,4 +76,5 @@ func registerEndpointRoutes(mux *http.ServeMux, pool *pgxpool.Pool) {
 
 	mux.HandleFunc("POST /applications/{appID}/endpoints", h.Create)
 	mux.HandleFunc("GET /applications/{appID}/endpoints", h.List)
+	mux.HandleFunc("DELETE /applications/{appID}/endpoints/{endpointID}", h.Delete)
 }
