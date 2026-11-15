@@ -12,6 +12,7 @@
 	--key: #237a45;
 	--key-press: #1b6237;
 	--error: #a23b12;
+	--error-press: #872f0c;
 	--error-dot: #e0662a;
 
 	--sans: 'Hanken Grotesk', system-ui, sans-serif;
@@ -154,6 +155,30 @@ a {
 
 .btn-key:hover {
 	background: var(--key-press);
+}
+
+/* Destructive commit. Appears only at the last step, never as a resting control. */
+.btn-danger {
+	border: 0;
+	background: var(--error);
+	color: #fff;
+}
+
+.btn-danger:hover {
+	background: var(--error-press);
+}
+
+.btn-danger:disabled {
+	cursor: not-allowed;
+}
+
+.sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
 }
 
 .error {

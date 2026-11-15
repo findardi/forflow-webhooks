@@ -148,6 +148,7 @@ Modest rounding: 10px on panels, 6px on controls. Borders are always 1px. Error 
 - **Shape:** 42px tall, 6px radius, 600 15px text, 18px side padding.
 - **Key:** green fill, white text; the one primary action.
 - **Ghost:** 1px graphite stroke, transparent; Sunk Panel on hover.
+- **Danger:** Error Rust fill, white text, darkens to `#872f0c` on hover. Only at the last step of a delete, never as a resting control. Disabled shows `not-allowed`.
 - **States:** press nudges down 1px (80ms); disabled drops to 0.6 opacity with a progress cursor. Transitions are off under reduced motion.
 
 ### Inputs / Fields
@@ -167,6 +168,10 @@ Modest rounding: 10px on panels, 6px on controls. Borders are always 1px. Error 
 
 ### Dot Grille
 - Radial dots (1.6px, Grille Dot) on an 8px pitch. Used only as the empty-state and error-page mark, decorative (`aria-hidden`).
+
+### Destructive actions
+- **Endpoint row:** a quiet "Delete" text button arms the row (Matte Ground fill). Confirm (Danger) appears to its left and Cancel takes the trigger's spot, so a double click cancels. Escape cancels.
+- **Application:** a ghost "Delete…" sits beside "Copy ID" in the header. It opens a Sunk Panel strip under the header that names what goes with it (endpoint count) and asks for the exact name before the Danger button enables. The server checks the name too.
 
 ## Do's and Don'ts
 

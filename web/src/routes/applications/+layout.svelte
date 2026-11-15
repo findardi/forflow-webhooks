@@ -72,7 +72,10 @@
 	</section>
 
 	<div class="detail">
-		{@render children()}
+		<!-- Remount per application so page state (armed deletes, copy label) never leaks across. -->
+		{#key page.params.id}
+			{@render children()}
+		{/key}
 	</div>
 </div>
 
