@@ -5,6 +5,8 @@
 package sqlc
 
 import (
+	"encoding/json"
+
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -13,6 +15,15 @@ type Application struct {
 	Name      string             `json:"name"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	DeletedAt pgtype.Timestamptz `json:"deleted_at"`
+}
+
+type Delivery struct {
+	ID         pgtype.UUID        `json:"id"`
+	MessageID  pgtype.UUID        `json:"message_id"`
+	EndpointID pgtype.UUID        `json:"endpoint_id"`
+	Status     string             `json:"status"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
 }
 
 type Endpoint struct {
@@ -26,6 +37,6 @@ type Endpoint struct {
 type Message struct {
 	ID            pgtype.UUID        `json:"id"`
 	ApplicationID pgtype.UUID        `json:"application_id"`
-	Payload       []byte             `json:"payload"`
+	Payload       json.RawMessage    `json:"payload"`
 	CreatedAt     pgtype.Timestamptz `json:"created_at"`
 }

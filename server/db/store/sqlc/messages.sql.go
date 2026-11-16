@@ -7,6 +7,7 @@ package sqlc
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -14,14 +15,17 @@ import (
 const createMessages = `-- name: CreateMessages :one
 insert into messages
     (application_id, payload)
-values
-    ($1, $2)
+select $1, $2
+where exists (
+    select 1 from applications
+    where id = $1 and deleted_at is null
+)
 returning id, application_id, payload, created_at
 `
 
 type CreateMessagesParams struct {
-	ApplicationID pgtype.UUID `json:"application_id"`
-	Payload       []byte      `json:"payload"`
+	ApplicationID pgtype.UUID     `json:"application_id"`
+	Payload       json.RawMessage `json:"payload"`
 }
 
 func (q *Queries) CreateMessages(ctx context.Context, arg CreateMessagesParams) (Message, error) {
@@ -34,4 +38,42 @@ func (q *Queries) CreateMessages(ctx context.Context, arg CreateMessagesParams) 
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const listMessagesByEndpoint = `-- name: ListMessagesByEndpoint :many
+select m.id, m.application_id, m.payload, m.created_at from messages m
+join deliveries d on d.message_id = m.id
+where d.endpoint_id = $1
+and m.application_id = $2
+order by m.created_at asc
+`
+
+type ListMessagesByEndpointParams struct {
+	EndpointID    pgtype.UUID `json:"endpoint_id"`
+	ApplicationID pgtype.UUID `json:"application_id"`
+}
+
+func (q *Queries) ListMessagesByEndpoint(ctx context.Context, arg ListMessagesByEndpointParams) ([]Message, error) {
+	rows, err := q.db.Query(ctx, listMessagesByEndpoint, arg.EndpointID, arg.ApplicationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Message{}
+	for rows.Next() {
+		var i Message
+		if err := rows.Scan(
+			&i.ID,
+			&i.ApplicationID,
+			&i.Payload,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

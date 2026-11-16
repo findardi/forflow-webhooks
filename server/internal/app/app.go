@@ -11,6 +11,7 @@ import (
 	"github.com/findardi/forflow-webhooks/server/internal/application"
 	"github.com/findardi/forflow-webhooks/server/internal/config"
 	"github.com/findardi/forflow-webhooks/server/internal/endpoint"
+	"github.com/findardi/forflow-webhooks/server/internal/message"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -59,6 +60,7 @@ func NewRouter(pool *pgxpool.Pool) http.Handler {
 
 	registerApplicationRoutes(mux, pool)
 	registerEndpointRoutes(mux, pool)
+	registerMessageRoutes(mux, pool)
 
 	return mux
 }
@@ -77,4 +79,11 @@ func registerEndpointRoutes(mux *http.ServeMux, pool *pgxpool.Pool) {
 	mux.HandleFunc("POST /applications/{appID}/endpoints", h.Create)
 	mux.HandleFunc("GET /applications/{appID}/endpoints", h.List)
 	mux.HandleFunc("DELETE /applications/{appID}/endpoints/{endpointID}", h.Delete)
+}
+
+func registerMessageRoutes(mux *http.ServeMux, pool *pgxpool.Pool) {
+	h := message.NewHandler(pool)
+
+	mux.HandleFunc("POST /applications/{appID}/messages", h.CreateMessage)
+	mux.HandleFunc("GET /applications/{appID}/endpoints/{endpointID}/messages", h.ListMessage)
 }
