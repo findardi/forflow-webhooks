@@ -76,6 +76,20 @@ func (s *Service) CreateMessage(ctx context.Context, request CreateMessage) (sql
 	return message, nil
 }
 
+func (s *Service) ListByApplication(ctx context.Context, applicationID string) ([]sqlc.ListMessagesByApplicationRow, error) {
+	appID, err := helper.ToUUID(applicationID)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrInvalidApplicationID, err)
+	}
+
+	result, err := s.q.ListMessagesByApplication(ctx, appID)
+	if err != nil {
+		return nil, fmt.Errorf("list messages: %w", err)
+	}
+
+	return result, nil
+}
+
 func (s *Service) ListByEndpoint(ctx context.Context, applicationID, endpointID string) ([]sqlc.ListMessagesByEndpointRow, error) {
 	appID, err := helper.ToUUID(applicationID)
 	if err != nil {

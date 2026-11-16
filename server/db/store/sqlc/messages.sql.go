@@ -40,6 +40,58 @@ func (q *Queries) CreateMessages(ctx context.Context, arg CreateMessagesParams) 
 	return i, err
 }
 
+const listMessagesByApplication = `-- name: ListMessagesByApplication :many
+select m.id, m.application_id, m.payload, m.created_at,
+    d.id as delivery_id, d.status as delivery_status, e.url as endpoint_url
+from messages m
+left join deliveries d on d.message_id = m.id
+left join endpoints e on e.id = d.endpoint_id
+where m.application_id = $1
+order by m.created_at asc, m.id asc, e.url desc
+`
+
+type ListMessagesByApplicationRow struct {
+	ID             pgtype.UUID        `json:"id"`
+	ApplicationID  pgtype.UUID        `json:"application_id"`
+	Payload        json.RawMessage    `json:"payload"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	DeliveryID     pgtype.UUID        `json:"delivery_id"`
+	DeliveryStatus pgtype.Text        `json:"delivery_status"`
+	EndpointUrl    pgtype.Text        `json:"endpoint_url"`
+}
+
+// One row per delivery, same shape as ListMessagesByEndpoint plus the endpoint.
+// Deleted endpoints stay in (their URL still shows); a message with no delivery
+// appears once with null delivery columns. Ties sort by URL descending because
+// the dashboard reverses the list to show newest first.
+func (q *Queries) ListMessagesByApplication(ctx context.Context, applicationID pgtype.UUID) ([]ListMessagesByApplicationRow, error) {
+	rows, err := q.db.Query(ctx, listMessagesByApplication, applicationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListMessagesByApplicationRow{}
+	for rows.Next() {
+		var i ListMessagesByApplicationRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ApplicationID,
+			&i.Payload,
+			&i.CreatedAt,
+			&i.DeliveryID,
+			&i.DeliveryStatus,
+			&i.EndpointUrl,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listMessagesByEndpoint = `-- name: ListMessagesByEndpoint :many
 select m.id, m.application_id, m.payload, m.created_at, d.status as delivery_status
 from messages m

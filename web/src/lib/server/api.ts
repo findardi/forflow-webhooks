@@ -25,8 +25,15 @@ export type Message = {
 
 export type DeliveryStatus = 'pending' | 'succeeded' | 'failed' | 'canceled';
 
-/** A message as seen from one endpoint: its delivery status rides along. */
-export type DeliveredMessage = Message & { delivery_status: DeliveryStatus };
+/**
+ * One row per delivery. Per endpoint: status only. Per application: also the delivery ID and
+ * endpoint URL, all null when the message reached no endpoint.
+ */
+export type DeliveredMessage = Message & {
+	delivery_id?: string | null;
+	delivery_status: DeliveryStatus | null;
+	endpoint_url?: string | null;
+};
 
 export class ApiError extends Error {
 	constructor(

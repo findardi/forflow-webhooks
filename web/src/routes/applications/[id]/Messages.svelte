@@ -40,14 +40,15 @@
 	{#if endpoints.length}
 		<form method="GET" class="pick" data-sveltekit-keepfocus data-sveltekit-noscroll>
 			<input type="hidden" name="tab" value="messages" />
-			<label for="endpoint-pick" class="label">Delivered to</label>
+			<label for="endpoint-pick" class="label">Endpoint</label>
 			<select
 				id="endpoint-pick"
 				class="field mono"
 				name="endpoint"
-				value={endpointId}
+				value={endpointId ?? ''}
 				onchange={(e) => e.currentTarget.form?.requestSubmit()}
 			>
+				<option value="">All endpoints</option>
 				{#each endpoints as ep (ep.id)}
 					<option value={ep.id}>{ep.url}</option>
 				{/each}
@@ -126,7 +127,15 @@
 	</form>
 {/if}
 
-{#if !endpoints.length}
+{#snippet status(s: DeliveredMessage['delivery_status'])}
+	{#if s}
+		<span class="status {s}">{s}</span>
+	{:else}
+		<span class="status none" title="No endpoint existed when this message was sent">—</span>
+	{/if}
+{/snippet}
+
+{#if !messages.length && !endpoints.length}
 	<div class="empty">
 		<div class="grille" aria-hidden="true"></div>
 		<p>
@@ -140,24 +149,33 @@
 			<thead>
 				<tr>
 					<th class="label" scope="col">Payload</th>
+					{#if !endpointId}
+						<th class="label endpoint-col" scope="col">Endpoint</th>
+					{/if}
 					<th class="label status-col" scope="col">Status</th>
 					<th class="label id-col" scope="col">ID</th>
 					<th class="label time" scope="col">Created (UTC)</th>
 				</tr>
 			</thead>
 			<tbody>
-				{#each messages as m (m.id)}
+				{#each messages as m (m.delivery_id ?? m.id)}
 					<tr>
 						<td class="payload">
 							<details>
 								<summary class="mono">{JSON.stringify(m.payload)}</summary>
 								<pre class="mono">{JSON.stringify(m.payload, null, 2)}</pre>
 							</details>
-							<span class="status inline {m.delivery_status}">{m.delivery_status}</span>
+							<span class="inline">
+								{@render status(m.delivery_status)}
+								{#if m.endpoint_url}<span class="mono dim">{m.endpoint_url}</span>{/if}
+							</span>
 						</td>
-						<td class="status-col"
-							><span class="status {m.delivery_status}">{m.delivery_status}</span></td
-						>
+						{#if !endpointId}
+							<td class="mono endpoint-col" class:dim={!m.endpoint_url} title={m.endpoint_url}
+								>{m.endpoint_url ?? '—'}</td
+							>
+						{/if}
+						<td class="status-col">{@render status(m.delivery_status)}</td>
 						<td class="mono dim id-col" title={m.id}>{m.id.slice(0, 8)}</td>
 						<td class="time"><time datetime={m.created_at}>{dateShort(m.created_at)}</time></td>
 					</tr>
@@ -168,7 +186,11 @@
 {:else}
 	<div class="empty">
 		<div class="grille" aria-hidden="true"></div>
-		<p>No messages delivered to this endpoint yet. Send one to see it here.</p>
+		<p>
+			{endpointId
+				? 'No messages delivered to this endpoint yet.'
+				: 'No messages for this application yet.'} Send one to see it here.
+		</p>
 	</div>
 {/if}
 
@@ -291,6 +313,17 @@
 		width: 130px;
 	}
 
+	.endpoint-col {
+		width: 240px;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.status.none {
+		color: var(--ink-3);
+	}
+
 	.status {
 		text-transform: capitalize;
 	}
@@ -319,7 +352,7 @@
 		background: var(--error-dot);
 	}
 
-	.status.inline {
+	.inline {
 		display: none;
 	}
 
@@ -385,14 +418,18 @@
 
 		.hint,
 		.id-col,
+		.endpoint-col,
 		.status-col {
 			display: none;
 		}
 
-		.status.inline {
-			display: inline-flex;
+		.inline {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 2px 10px;
 			margin-top: 4px;
 			font-size: 14px;
+			overflow-wrap: anywhere;
 		}
 
 		th,

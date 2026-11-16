@@ -11,6 +11,29 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const cancelDeliveriesByApplication = `-- name: CancelDeliveriesByApplication :exec
+update deliveries
+set status = 'canceled', updated_at = now()
+where status = 'pending'
+and endpoint_id in (select id from endpoints where application_id = $1)
+`
+
+func (q *Queries) CancelDeliveriesByApplication(ctx context.Context, applicationID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, cancelDeliveriesByApplication, applicationID)
+	return err
+}
+
+const cancelStatusDeliveries = `-- name: CancelStatusDeliveries :exec
+update deliveries
+set status = 'canceled', updated_at = now()
+where endpoint_id = $1 and status = 'pending'
+`
+
+func (q *Queries) CancelStatusDeliveries(ctx context.Context, endpointID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, cancelStatusDeliveries, endpointID)
+	return err
+}
+
 const createDeliveriesForMessage = `-- name: CreateDeliveriesForMessage :execrows
 insert into deliveries
     (message_id, endpoint_id)

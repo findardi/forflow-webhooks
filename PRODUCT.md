@@ -33,9 +33,10 @@ API available today (Go, `server/internal/app/app.go`):
 - `GET /applications`. Lists all applications, oldest first.
 - `POST /applications/{appID}/endpoints` with `{ url }`. 400 invalid URL or app ID, 404 application not found, 409 endpoint URL already exists for that application.
 - `GET /applications/{appID}/endpoints`. Lists endpoints, oldest first.
-- `DELETE /applications/{appID}` and `DELETE /applications/{appID}/endpoints/{endpointID}`. Soft delete; deleting an application deletes its endpoints.
+- `DELETE /applications/{appID}` and `DELETE /applications/{appID}/endpoints/{endpointID}`. Soft delete; deleting an application deletes its endpoints. Either way, pending deliveries of the removed endpoints become `canceled`; succeeded and failed stay.
 - `POST /applications/{appID}/messages` with `{ payload }` (any JSON value except null, request body under 4 KB). Creates one `pending` delivery per live endpoint in the same transaction. 400 invalid payload or app ID, 404 application not found.
-- `GET /applications/{appID}/endpoints/{endpointID}/messages`. Messages delivered to that endpoint with their `delivery_status` (`pending`, `succeeded`, `failed`, `canceled`), oldest first. There is no list per application.
+- `GET /applications/{appID}/endpoints/{endpointID}/messages`. Messages delivered to that endpoint with their `delivery_status` (`pending`, `succeeded`, `failed`, `canceled`), oldest first.
+- `GET /applications/{appID}/messages`. One row per delivery of the application's messages (`delivery_id`, `delivery_status`, `endpoint_url`), oldest first, deleted endpoints included. A message with no delivery appears once with those fields null.
 - JSON responses use snake_case. Errors are plain text bodies.
 - Records: application `id` (UUIDv7), `name`, `created_at`, `deleted_at`. Endpoint `id`, `application_id`, `url`, `created_at`. Message `id`, `application_id`, `payload`, `created_at`.
 

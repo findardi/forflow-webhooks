@@ -46,6 +46,16 @@ func (h *Handler) ListMessage(w http.ResponseWriter, r *http.Request) {
 	helper.WriteJSON(w, http.StatusOK, result)
 }
 
+func (h *Handler) ListByApplication(w http.ResponseWriter, r *http.Request) {
+	result, err := h.svc.ListByApplication(r.Context(), r.PathValue("appID"))
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+
+	helper.WriteJSON(w, http.StatusOK, result)
+}
+
 func writeError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, ErrInvalidApplicationID), errors.Is(err, ErrInvalidEndpointID), errors.Is(err, ErrInvalidPayload):

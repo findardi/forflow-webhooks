@@ -86,6 +86,10 @@ func (s *Service) Delete(ctx context.Context, applicationID string) error {
 		return fmt.Errorf("delete endpoints: %w", err)
 	}
 
+	if err := q.CancelDeliveriesByApplication(ctx, appID); err != nil {
+		return fmt.Errorf("cancel deliveries: %w", err)
+	}
+
 	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf("commit delete: %w", err)
 	}

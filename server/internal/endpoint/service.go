@@ -23,12 +23,14 @@ var (
 )
 
 type Service struct {
-	q *sqlc.Queries
+	q    *sqlc.Queries
+	pool *pgxpool.Pool
 }
 
 func NewService(pool *pgxpool.Pool) *Service {
 	return &Service{
-		q: sqlc.New(pool),
+		q:    sqlc.New(pool),
+		pool: pool,
 	}
 }
 
@@ -106,12 +108,31 @@ func (s *Service) Delete(ctx context.Context, applicationID, endpointID string) 
 		return fmt.Errorf("%w: %w", ErrInvalidEndpointID, err)
 	}
 
-	rows, err := s.q.DeleteEndpoint(ctx, sqlc.DeleteEndpointParams{ID: eID, ApplicationID: appID})
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin delete: %w", err)
+	}
+
+	defer func() {
+		_ = tx.Rollback(context.WithoutCancel(ctx))
+	}()
+
+	q := s.q.WithTx(tx)
+
+	rows, err := q.DeleteEndpoint(ctx, sqlc.DeleteEndpointParams{ID: eID, ApplicationID: appID})
 	if err != nil {
 		return fmt.Errorf("delete endpoint: %w", err)
 	}
 	if rows == 0 {
 		return ErrEndpointNotFound
+	}
+
+	if err := q.CancelStatusDeliveries(ctx, eID); err != nil {
+		return fmt.Errorf("cancel deliveries status: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit delete endpoint: %w", err)
 	}
 
 	return nil

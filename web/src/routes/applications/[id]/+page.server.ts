@@ -21,16 +21,19 @@ export const load = async ({ fetch, params, parent, url }) => {
 	if (!application) error(404, 'Application not found.');
 
 	const tab = url.searchParams.get('tab') === 'messages' ? 'messages' : 'endpoints';
-	if (tab === 'endpoints' || !endpoints.length) {
+	if (tab === 'endpoints') {
 		return { application, endpoints, tab, endpointId: null, messages: [] as DeliveredMessage[] };
 	}
 
-	// The API lists messages per endpoint only; default to the first one.
+	// No endpoint picked (or one since deleted): every message of the application,
+	// including those that went to deleted endpoints.
 	const wanted = url.searchParams.get('endpoint');
-	const endpointId = endpoints.some((e) => e.id === wanted) ? wanted! : endpoints[0].id;
+	const endpointId = endpoints.some((e) => e.id === wanted) ? wanted : null;
 	const messages = await api<DeliveredMessage[]>(
 		fetch,
-		`/applications/${params.id}/endpoints/${endpointId}/messages`
+		endpointId
+			? `/applications/${params.id}/endpoints/${endpointId}/messages`
+			: `/applications/${params.id}/messages`
 	);
 
 	// Newest first: the one just sent is the one you look for.

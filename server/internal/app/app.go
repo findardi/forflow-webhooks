@@ -85,5 +85,6 @@ func registerMessageRoutes(mux *http.ServeMux, pool *pgxpool.Pool) {
 	h := message.NewHandler(pool)
 
 	mux.HandleFunc("POST /applications/{appID}/messages", h.CreateMessage)
+	mux.HandleFunc("GET /applications/{appID}/messages", h.ListByApplication)
 	mux.HandleFunc("GET /applications/{appID}/endpoints/{endpointID}/messages", h.ListMessage)
 }
