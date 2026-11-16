@@ -1,8 +1,8 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import { createApplication } from '#lib/server/actions.ts';
-import { api, ApiError, type Application, type Endpoint } from '#lib/server/api.ts';
+import { api, ApiError, type Application, type Endpoint, type Message } from '#lib/server/api.ts';
 
-export const load = async ({ fetch, params, parent }) => {
+export const load = async ({ fetch, params, parent, url }) => {
 	const [{ applications }, endpoints] = await Promise.all([
 		parent(),
 		api<Endpoint[]>(fetch, `/applications/${params.id}/endpoints`).catch((e) => {
@@ -13,7 +13,21 @@ export const load = async ({ fetch, params, parent }) => {
 	const application = applications.find((a) => a.id === params.id);
 	if (!application) error(404, 'Application not found.');
 
-	return { application, endpoints };
+	const tab = url.searchParams.get('tab') === 'messages' ? 'messages' : 'endpoints';
+	if (tab === 'endpoints' || !endpoints.length) {
+		return { application, endpoints, tab, endpointId: null, messages: [] as Message[] };
+	}
+
+	// The API lists messages per endpoint only; default to the first one.
+	const wanted = url.searchParams.get('endpoint');
+	const endpointId = endpoints.some((e) => e.id === wanted) ? wanted! : endpoints[0].id;
+	const messages = await api<Message[]>(
+		fetch,
+		`/applications/${params.id}/endpoints/${endpointId}/messages`
+	);
+
+	// Newest first: the one just sent is the one you look for.
+	return { application, endpoints, tab, endpointId, messages: messages.reverse() };
 };
 
 const messages: Record<number, string> = {
@@ -37,6 +51,38 @@ export const actions = {
 			throw e;
 		}
 		return { added: url };
+	},
+	send: async ({ request, fetch, params }) => {
+		const raw = String((await request.formData()).get('payload') ?? '').trim();
+		let parsed: unknown;
+		try {
+			parsed = JSON.parse(raw);
+		} catch {
+			return fail(400, { payload: raw, message: 'Payload must be valid JSON.' });
+		}
+		if (parsed === null) {
+			return fail(400, {
+				payload: raw,
+				message: 'Payload cannot be null. Send an object or value.'
+			});
+		}
+
+		let sent: Message;
+		try {
+			sent = await api<Message>(fetch, `/applications/${params.id}/messages`, `{"payload":${raw}}`);
+		} catch (e) {
+			if (e instanceof ApiError && e.status === 404) {
+				return fail(404, { payload: raw, message: 'This application no longer exists.' });
+			}
+			if (e instanceof ApiError && e.status === 400) {
+				return fail(400, {
+					payload: raw,
+					message: 'The API rejected this payload. Keep it valid JSON under 4 KB.'
+				});
+			}
+			throw e;
+		}
+		return { sent: sent.id };
 	},
 	deleteEndpoint: async ({ request, fetch, params }) => {
 		const id = String((await request.formData()).get('endpoint_id') ?? '');

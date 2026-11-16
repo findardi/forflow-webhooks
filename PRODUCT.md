@@ -33,14 +33,17 @@ API available today (Go, `server/internal/app/app.go`):
 - `GET /applications`. Lists all applications, oldest first.
 - `POST /applications/{appID}/endpoints` with `{ url }`. 400 invalid URL or app ID, 404 application not found, 409 endpoint URL already exists for that application.
 - `GET /applications/{appID}/endpoints`. Lists endpoints, oldest first.
+- `DELETE /applications/{appID}` and `DELETE /applications/{appID}/endpoints/{endpointID}`. Soft delete; deleting an application deletes its endpoints.
+- `POST /applications/{appID}/messages` with `{ payload }` (any JSON value except null, request body under 4 KB). Creates one `pending` delivery per live endpoint in the same transaction. 400 invalid payload or app ID, 404 application not found.
+- `GET /applications/{appID}/endpoints/{endpointID}/messages`. Messages delivered to that endpoint, oldest first. There is no list per application.
 - JSON responses use snake_case. Errors are plain text bodies.
-- Records: application `id` (UUIDv7), `name`, `created_at`, `deleted_at`. Endpoint `id`, `application_id`, `url`, `created_at`.
+- Records: application `id` (UUIDv7), `name`, `created_at`, `deleted_at`. Endpoint `id`, `application_id`, `url`, `created_at`. Message `id`, `application_id`, `payload`, `created_at`.
 
 Scope rules:
 
-- The first dashboard covers only these four APIs. Do not design screens or fake data for messages, deliveries, attempts, event types, or API keys until the API exists.
+- The dashboard covers only the APIs above. Do not design screens or fake data for delivery status, attempts, event types, or API keys until the API exists.
 - No auth for now. Login, environments, and the auto-created organization come later.
-- No update or delete endpoints exist yet.
+- No update endpoints exist yet. No delivery worker exists yet, so every delivery stays `pending`.
 
 Stack: SvelteKit (Svelte 5 runes), TypeScript, Bun, Vite. Prettier: tabs, single quotes, no trailing commas, width 100.
 

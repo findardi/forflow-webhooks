@@ -15,6 +15,14 @@ export type Endpoint = {
 	created_at: string;
 };
 
+export type Message = {
+	id: string;
+	application_id: string;
+	// Parsed by res.json(), so integers past 2^53 display rounded.
+	payload: unknown;
+	created_at: string;
+};
+
 export class ApiError extends Error {
 	constructor(
 		public status: number,
@@ -26,7 +34,10 @@ export class ApiError extends Error {
 
 const baseUrl = () => API_URL;
 
-/** GET when body is undefined, POST JSON otherwise; pass method for DELETE. Throws ApiError on non-2xx. */
+/**
+ * GET when body is undefined, POST JSON otherwise; pass method for DELETE. Throws ApiError on non-2xx.
+ * A string body is sent as already-serialized JSON, so user-typed JSON reaches the API byte for byte.
+ */
 export async function api<T>(
 	fetch: typeof globalThis.fetch,
 	path: string,
@@ -42,7 +53,7 @@ export async function api<T>(
 				: {
 						method,
 						headers: { 'content-type': 'application/json' },
-						body: JSON.stringify(body)
+						body: typeof body === 'string' ? body : JSON.stringify(body)
 					}
 		);
 	} catch {

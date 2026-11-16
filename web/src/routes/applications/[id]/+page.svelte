@@ -2,6 +2,7 @@
 	import { tick } from 'svelte';
 	import { enhance } from '$app/forms';
 	import { dateLong, dateShort } from '#lib/format.ts';
+	import Messages from './Messages.svelte';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
@@ -132,104 +133,124 @@
 		</form>
 	{/if}
 
-	<form
-		method="POST"
-		action="?/add"
-		use:enhance={() => {
-			adding = true;
-			return async ({ update }) => {
-				await update();
-				adding = false;
-			};
-		}}
-	>
-		<label for="endpoint-url" class="label">Add endpoint</label>
-		<div class="row">
-			<input
-				id="endpoint-url"
-				class="field mono"
-				name="url"
-				type="url"
-				required
-				autocomplete="off"
-				spellcheck="false"
-				placeholder="https://your-service.example.com/webhooks"
-				value={addError ? (form?.url ?? '') : ''}
-				aria-invalid={addError ? 'true' : undefined}
-				aria-describedby={addError ? 'endpoint-url-error' : undefined}
-			/>
-			<button class="btn btn-key" disabled={adding}>Add endpoint</button>
-		</div>
-		{#if addError}
-			<p id="endpoint-url-error" class="error">{addError}</p>
-		{/if}
-	</form>
+	<nav class="tabs" aria-label="Application sections">
+		<a
+			href="/applications/{data.application.id}"
+			aria-current={data.tab === 'endpoints' ? 'page' : undefined}
+			>Endpoints <span class="count">{n}</span></a
+		>
+		<a href="?tab=messages" aria-current={data.tab === 'messages' ? 'page' : undefined}>Messages</a>
+	</nav>
 
-	{#if data.endpoints.length}
-		<div class="table-wrap">
-			<table>
-				<thead>
-					<tr>
-						<th class="label" scope="col">Endpoint URL</th>
-						<th class="label id-col" scope="col">ID</th>
-						<th class="label" scope="col">Created (UTC)</th>
-						<th scope="col"><span class="sr-only">Actions</span></th>
-					</tr>
-				</thead>
-				<tbody>
-					{#each data.endpoints as ep (ep.id)}
-						<tr class:armed={armed === ep.id}>
-							<td class="mono url">{ep.url}</td>
-							<td class="mono dim id-col" title={ep.id}>{ep.id.slice(0, 8)}</td>
-							<td class="time"><time datetime={ep.created_at}>{dateShort(ep.created_at)}</time></td>
-							<td class="act">
-								{#if armed === ep.id}
-									<form
-										method="POST"
-										action="?/deleteEndpoint"
-										class="confirm"
-										use:enhance={() => {
-											deleting = ep.id;
-											return async ({ update }) => {
-												await update();
-												deleting = null;
-												armed = null;
-											};
-										}}
-									>
-										<input type="hidden" name="endpoint_id" value={ep.id} />
-										<button
-											class="btn btn-s btn-danger"
-											disabled={deleting === ep.id}
-											aria-label="Confirm delete {ep.url}">Delete</button
+	{#if data.tab === 'messages'}
+		<Messages
+			appId={data.application.id}
+			endpoints={data.endpoints}
+			endpointId={data.endpointId}
+			messages={data.messages}
+		/>
+	{:else}
+		<form
+			method="POST"
+			action="?/add"
+			use:enhance={() => {
+				adding = true;
+				return async ({ update }) => {
+					await update();
+					adding = false;
+				};
+			}}
+		>
+			<label for="endpoint-url" class="label">Add endpoint</label>
+			<div class="row">
+				<input
+					id="endpoint-url"
+					class="field mono"
+					name="url"
+					type="url"
+					required
+					autocomplete="off"
+					spellcheck="false"
+					placeholder="https://your-service.example.com/webhooks"
+					value={addError ? (form?.url ?? '') : ''}
+					aria-invalid={addError ? 'true' : undefined}
+					aria-describedby={addError ? 'endpoint-url-error' : undefined}
+				/>
+				<button class="btn btn-key" disabled={adding}>Add endpoint</button>
+			</div>
+			{#if addError}
+				<p id="endpoint-url-error" class="error">{addError}</p>
+			{/if}
+		</form>
+
+		{#if data.endpoints.length}
+			<div class="table-wrap">
+				<table>
+					<thead>
+						<tr>
+							<th class="label" scope="col">Endpoint URL</th>
+							<th class="label id-col" scope="col">ID</th>
+							<th class="label" scope="col">Created (UTC)</th>
+							<th scope="col"><span class="sr-only">Actions</span></th>
+						</tr>
+					</thead>
+					<tbody>
+						{#each data.endpoints as ep (ep.id)}
+							<tr class:armed={armed === ep.id}>
+								<td class="mono url">{ep.url}</td>
+								<td class="mono dim id-col" title={ep.id}>{ep.id.slice(0, 8)}</td>
+								<td class="time"
+									><time datetime={ep.created_at}>{dateShort(ep.created_at)}</time></td
+								>
+								<td class="act">
+									{#if armed === ep.id}
+										<form
+											method="POST"
+											action="?/deleteEndpoint"
+											class="confirm"
+											use:enhance={() => {
+												deleting = ep.id;
+												return async ({ update }) => {
+													await update();
+													deleting = null;
+													armed = null;
+												};
+											}}
 										>
+											<input type="hidden" name="endpoint_id" value={ep.id} />
+											<button
+												class="btn btn-s btn-danger"
+												disabled={deleting === ep.id}
+												aria-label="Confirm delete {ep.url}">Delete</button
+											>
+											<button
+												type="button"
+												class="btn btn-s btn-ghost"
+												onclick={disarm}
+												{@attach focus}>Cancel</button
+											>
+										</form>
+									{:else}
 										<button
 											type="button"
-											class="btn btn-s btn-ghost"
-											onclick={disarm}
-											{@attach focus}>Cancel</button
+											id="del-{ep.id}"
+											class="text-btn"
+											onclick={() => (armed = ep.id)}
+											aria-label="Delete endpoint {ep.url}">Delete</button
 										>
-									</form>
-								{:else}
-									<button
-										type="button"
-										id="del-{ep.id}"
-										class="text-btn"
-										onclick={() => (armed = ep.id)}
-										aria-label="Delete endpoint {ep.url}">Delete</button
-									>
-								{/if}
-							</td>
-						</tr>
-					{/each}
-				</tbody>
-			</table>
-		</div>
-	{:else}
-		<div class="empty">
-			<div class="grille" aria-hidden="true"></div>
-			<p>No endpoints yet. Add the URL that should receive this application's webhooks.</p>
-		</div>
+									{/if}
+								</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			</div>
+		{:else}
+			<div class="empty">
+				<div class="grille" aria-hidden="true"></div>
+				<p>No endpoints yet. Add the URL that should receive this application's webhooks.</p>
+			</div>
+		{/if}
 	{/if}
 </section>
 
@@ -271,6 +292,38 @@
 		gap: 8px;
 		padding: 20px 28px;
 		border-bottom: 1px solid var(--rule);
+	}
+
+	/* Same voice as the top bar: current tab is graphite 600, the rest graphite 2. */
+	.tabs {
+		display: flex;
+		gap: 28px;
+		padding: 0 28px;
+		border-bottom: 1px solid var(--rule);
+	}
+
+	.tabs a {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		height: 48px;
+		color: var(--ink-2);
+		text-decoration: none;
+	}
+
+	.tabs a:hover {
+		color: var(--ink);
+	}
+
+	.tabs a[aria-current='page'] {
+		color: var(--ink);
+		font-weight: 600;
+	}
+
+	.count {
+		color: var(--ink-2);
+		font-weight: 400;
+		font-variant-numeric: tabular-nums;
 	}
 
 	.row {
@@ -419,6 +472,10 @@
 
 		form {
 			padding: 16px;
+		}
+
+		.tabs {
+			padding: 0 16px;
 		}
 
 		.row {
