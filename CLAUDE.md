@@ -19,7 +19,7 @@ This is a learning project, not a production product. Build one stage at a time.
 - Design only for the current stage. Do not propose solutions for components that do not exist yet (worker, retry, backoff, leases, indexes for future queries, and so on).
 - Let problems appear first. The user wants to hit an issue, then design the fix. Do not solve problems in advance.
 - Keep schemas and code minimal. Add a column, status, or table only when the current stage needs it.
-- When a later problem is relevant, name it in one line at most. Do not design the fix.
+- Do not name or hint at later problems. The user finds them by running the code.
 
 ## Setup
 
