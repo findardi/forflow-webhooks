@@ -23,6 +23,11 @@ export type Message = {
 	created_at: string;
 };
 
+export type DeliveryStatus = 'pending' | 'succeeded' | 'failed' | 'canceled';
+
+/** A message as seen from one endpoint: its delivery status rides along. */
+export type DeliveredMessage = Message & { delivery_status: DeliveryStatus };
+
 export class ApiError extends Error {
 	constructor(
 		public status: number,

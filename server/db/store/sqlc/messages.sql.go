@@ -41,7 +41,8 @@ func (q *Queries) CreateMessages(ctx context.Context, arg CreateMessagesParams) 
 }
 
 const listMessagesByEndpoint = `-- name: ListMessagesByEndpoint :many
-select m.id, m.application_id, m.payload, m.created_at from messages m
+select m.id, m.application_id, m.payload, m.created_at, d.status as delivery_status
+from messages m
 join deliveries d on d.message_id = m.id
 where d.endpoint_id = $1
 and m.application_id = $2
@@ -53,20 +54,29 @@ type ListMessagesByEndpointParams struct {
 	ApplicationID pgtype.UUID `json:"application_id"`
 }
 
-func (q *Queries) ListMessagesByEndpoint(ctx context.Context, arg ListMessagesByEndpointParams) ([]Message, error) {
+type ListMessagesByEndpointRow struct {
+	ID             pgtype.UUID        `json:"id"`
+	ApplicationID  pgtype.UUID        `json:"application_id"`
+	Payload        json.RawMessage    `json:"payload"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	DeliveryStatus string             `json:"delivery_status"`
+}
+
+func (q *Queries) ListMessagesByEndpoint(ctx context.Context, arg ListMessagesByEndpointParams) ([]ListMessagesByEndpointRow, error) {
 	rows, err := q.db.Query(ctx, listMessagesByEndpoint, arg.EndpointID, arg.ApplicationID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Message{}
+	items := []ListMessagesByEndpointRow{}
 	for rows.Next() {
-		var i Message
+		var i ListMessagesByEndpointRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.ApplicationID,
 			&i.Payload,
 			&i.CreatedAt,
+			&i.DeliveryStatus,
 		); err != nil {
 			return nil, err
 		}

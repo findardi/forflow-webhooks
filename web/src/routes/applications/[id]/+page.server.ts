@@ -1,6 +1,13 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import { createApplication } from '#lib/server/actions.ts';
-import { api, ApiError, type Application, type Endpoint, type Message } from '#lib/server/api.ts';
+import {
+	api,
+	ApiError,
+	type Application,
+	type DeliveredMessage,
+	type Endpoint,
+	type Message
+} from '#lib/server/api.ts';
 
 export const load = async ({ fetch, params, parent, url }) => {
 	const [{ applications }, endpoints] = await Promise.all([
@@ -15,13 +22,13 @@ export const load = async ({ fetch, params, parent, url }) => {
 
 	const tab = url.searchParams.get('tab') === 'messages' ? 'messages' : 'endpoints';
 	if (tab === 'endpoints' || !endpoints.length) {
-		return { application, endpoints, tab, endpointId: null, messages: [] as Message[] };
+		return { application, endpoints, tab, endpointId: null, messages: [] as DeliveredMessage[] };
 	}
 
 	// The API lists messages per endpoint only; default to the first one.
 	const wanted = url.searchParams.get('endpoint');
 	const endpointId = endpoints.some((e) => e.id === wanted) ? wanted! : endpoints[0].id;
-	const messages = await api<Message[]>(
+	const messages = await api<DeliveredMessage[]>(
 		fetch,
 		`/applications/${params.id}/endpoints/${endpointId}/messages`
 	);

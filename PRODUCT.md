@@ -35,7 +35,7 @@ API available today (Go, `server/internal/app/app.go`):
 - `GET /applications/{appID}/endpoints`. Lists endpoints, oldest first.
 - `DELETE /applications/{appID}` and `DELETE /applications/{appID}/endpoints/{endpointID}`. Soft delete; deleting an application deletes its endpoints.
 - `POST /applications/{appID}/messages` with `{ payload }` (any JSON value except null, request body under 4 KB). Creates one `pending` delivery per live endpoint in the same transaction. 400 invalid payload or app ID, 404 application not found.
-- `GET /applications/{appID}/endpoints/{endpointID}/messages`. Messages delivered to that endpoint, oldest first. There is no list per application.
+- `GET /applications/{appID}/endpoints/{endpointID}/messages`. Messages delivered to that endpoint with their `delivery_status` (`pending`, `succeeded`, `failed`, `canceled`), oldest first. There is no list per application.
 - JSON responses use snake_case. Errors are plain text bodies.
 - Records: application `id` (UUIDv7), `name`, `created_at`, `deleted_at`. Endpoint `id`, `application_id`, `url`, `created_at`. Message `id`, `application_id`, `payload`, `created_at`.
 

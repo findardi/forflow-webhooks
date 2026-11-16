@@ -172,6 +172,7 @@ Modest rounding: 10px on panels, 6px on controls. Borders are always 1px. Error 
 ### Composer
 - **Send message:** the Messages tab opens on what was delivered. A green "Send message…" key in the toolbar opens a Sunk Panel strip with a mono JSON textarea prefilled with a sample, the key "Send message", a ghost Cancel, and a "Ctrl + Enter sends" hint. Escape cancels. On success the strip closes, focus returns to the trigger, and the toolbar says "Sent" with the short ID.
 - **Payload rows:** one-line mono summary truncated with an ellipsis; a native disclosure expands the pretty-printed JSON in a 1px-ruled block.
+- **Delivery status:** a word, capitalized, never a coloured pill. Pending Graphite 2, Succeeded Graphite, Canceled Graphite 3, Failed Error Rust with the orange dot. Under 800px it moves under the payload line.
 
 ### Dot Grille
 - Radial dots (1.6px, Grille Dot) on an 8px pitch. Used only as the empty-state and error-page mark, decorative (`aria-hidden`).

@@ -2,13 +2,13 @@
 	import { tick } from 'svelte';
 	import { enhance } from '$app/forms';
 	import { dateShort } from '#lib/format.ts';
-	import type { Endpoint, Message } from '#lib/server/api.ts';
+	import type { DeliveredMessage, Endpoint } from '#lib/server/api.ts';
 
 	type Props = {
 		appId: string;
 		endpoints: Endpoint[];
 		endpointId: string | null;
-		messages: Message[];
+		messages: DeliveredMessage[];
 	};
 
 	let { appId, endpoints, endpointId, messages }: Props = $props();
@@ -140,6 +140,7 @@
 			<thead>
 				<tr>
 					<th class="label" scope="col">Payload</th>
+					<th class="label status-col" scope="col">Status</th>
 					<th class="label id-col" scope="col">ID</th>
 					<th class="label time" scope="col">Created (UTC)</th>
 				</tr>
@@ -152,7 +153,11 @@
 								<summary class="mono">{JSON.stringify(m.payload)}</summary>
 								<pre class="mono">{JSON.stringify(m.payload, null, 2)}</pre>
 							</details>
+							<span class="status inline {m.delivery_status}">{m.delivery_status}</span>
 						</td>
+						<td class="status-col"
+							><span class="status {m.delivery_status}">{m.delivery_status}</span></td
+						>
 						<td class="mono dim id-col" title={m.id}>{m.id.slice(0, 8)}</td>
 						<td class="time"><time datetime={m.created_at}>{dateShort(m.created_at)}</time></td>
 					</tr>
@@ -281,6 +286,43 @@
 		color: var(--ink-2);
 	}
 
+	/* Status is words, not colour: only a failure earns the error rust and its dot. */
+	.status-col {
+		width: 130px;
+	}
+
+	.status {
+		text-transform: capitalize;
+	}
+
+	.status.pending {
+		color: var(--ink-2);
+	}
+
+	.status.canceled {
+		color: var(--ink-3);
+	}
+
+	.status.failed {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		color: var(--error);
+		font-weight: 500;
+	}
+
+	.status.failed::before {
+		content: '';
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		background: var(--error-dot);
+	}
+
+	.status.inline {
+		display: none;
+	}
+
 	summary {
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -342,8 +384,15 @@
 		}
 
 		.hint,
-		.id-col {
+		.id-col,
+		.status-col {
 			display: none;
+		}
+
+		.status.inline {
+			display: inline-flex;
+			margin-top: 4px;
+			font-size: 14px;
 		}
 
 		th,

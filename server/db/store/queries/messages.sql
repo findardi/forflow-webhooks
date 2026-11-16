@@ -9,7 +9,8 @@ where exists (
 returning *;
 
 -- name: ListMessagesByEndpoint :many
-select m.* from messages m
+select m.id, m.application_id, m.payload, m.created_at, d.status as delivery_status
+from messages m
 join deliveries d on d.message_id = m.id
 where d.endpoint_id = sqlc.arg(endpoint_id)
 and m.application_id = sqlc.arg(application_id)

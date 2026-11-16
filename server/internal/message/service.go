@@ -76,7 +76,7 @@ func (s *Service) CreateMessage(ctx context.Context, request CreateMessage) (sql
 	return message, nil
 }
 
-func (s *Service) ListByEndpoint(ctx context.Context, applicationID, endpointID string) ([]sqlc.Message, error) {
+func (s *Service) ListByEndpoint(ctx context.Context, applicationID, endpointID string) ([]sqlc.ListMessagesByEndpointRow, error) {
 	appID, err := helper.ToUUID(applicationID)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrInvalidApplicationID, err)
