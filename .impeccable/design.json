@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-13T00:00:00Z",
+  "title": "Design System: Forflow",
+  "extensions": {
+    "colorMeta": {
+      "key": { "role": "primary", "displayName": "Key Green", "canonical": "#237a45", "tonalRamp": ["#0c2a18", "#14422a", "#1b6237", "#237a45", "#3f9a62", "#71b98c", "#a9d6b9", "#e1f1e6"] },
+      "ground": { "role": "neutral", "displayName": "Matte Ground", "canonical": "#f3f3f1" },
+      "rule": { "role": "neutral", "displayName": "Warm Rule", "canonical": "#e2e2df" },
+      "ink": { "role": "neutral", "displayName": "Graphite", "canonical": "#2b2b2b", "tonalRamp": ["#2b2b2b", "#5e5e5a", "#6f6f6b", "#c9c9c4", "#cfcfca", "#e2e2df", "#eeeeeb", "#f7f7f5"] },
+      "error": { "role": "error", "displayName": "Error Rust", "canonical": "#a23b12" },
+      "error-dot": { "role": "error", "displayName": "Error Dot", "canonical": "#e0662a" }
+    },
+    "typographyMeta": {
+      "label": { "displayName": "Label", "purpose": "Uppercase panel and table headers." },
+      "mono": { "displayName": "Mono", "purpose": "URLs and IDs only." }
+    },
+    "shadows": [],
+    "motion": [
+      { "name": "hover", "value": "120ms ease-out", "purpose": "Button background change." },
+      { "name": "press", "value": "80ms ease-out translateY(1px)", "purpose": "Button press." }
+    ],
+    "breakpoints": [ { "name": "single-column", "value": "800px" } ]
+  },
+  "components": [
+    { "name": "Key Button", "kind": "button", "refersTo": "button-key", "description": "The one primary action per screen.", "html": "<button class=\"ds-btn-key\">Add endpoint</button>", "css": ".ds-btn-key { height: 42px; padding: 0 18px; border: 0; border-radius: 6px; background: #237a45; color: #fff; font: 600 15px 'Hanken Grotesk', system-ui, sans-serif; cursor: pointer; transition: background-color 120ms ease-out, transform 80ms ease-out; } .ds-btn-key:hover { background: #1b6237; } .ds-btn-key:active { transform: translateY(1px); } .ds-btn-key:focus-visible { outline: 2px solid #2b2b2b; outline-offset: 2px; }" },
+    { "name": "Ghost Button", "kind": "button", "refersTo": "button-ghost", "description": "Secondary actions.", "html": "<button class=\"ds-btn-ghost\">Create</button>", "css": ".ds-btn-ghost { height: 42px; padding: 0 18px; border: 1px solid #2b2b2b; border-radius: 6px; background: transparent; color: #2b2b2b; font: 600 15px 'Hanken Grotesk', system-ui, sans-serif; cursor: pointer; transition: background-color 120ms ease-out, transform 80ms ease-out; } .ds-btn-ghost:hover { background: #f7f7f5; } .ds-btn-ghost:active { transform: translateY(1px); } .ds-btn-ghost:focus-visible { outline: 2px solid #2b2b2b; outline-offset: 2px; }" },
+    { "name": "Field", "kind": "input", "refersTo": "field", "description": "Single-line input.", "html": "<input class=\"ds-field\" placeholder=\"https://example.com/webhook\">", "css": ".ds-field { height: 42px; padding: 0 12px; border: 1px solid #cfcfca; border-radius: 6px; background: #fff; color: #2b2b2b; font: 15px 'Hanken Grotesk', system-ui, sans-serif; } .ds-field::placeholder { color: #6f6f6b; } .ds-field:hover { border-color: #6f6f6b; } .ds-field:focus-visible { outline: 2px solid #2b2b2b; outline-offset: 2px; }" },
+    { "name": "Panel", "kind": "card", "refersTo": "panel", "description": "White container with a label header.", "html": "<section class=\"ds-panel\"><div class=\"ds-head\"><span class=\"ds-label\">Applications</span><span>3</span></div><div class=\"ds-row\">Billing</div></section>", "css": ".ds-panel { background: #fff; border: 1px solid #e2e2df; border-radius: 10px; font: 15px/1.5 'Hanken Grotesk', system-ui, sans-serif; color: #2b2b2b; } .ds-head { display: flex; justify-content: space-between; padding: 18px 22px; border-bottom: 1px solid #e2e2df; } .ds-label { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #5e5e5a; } .ds-row { padding: 14px 22px; } .ds-row:hover { background: #f7f7f5; }" },
+    { "name": "Error", "kind": "custom", "description": "Plain-words API error beside a field.", "html": "<p class=\"ds-error\">Name is required.</p>", "css": ".ds-error { display: flex; align-items: center; gap: 10px; margin: 0; color: #a23b12; font: 500 15px 'Hanken Grotesk', system-ui, sans-serif; } .ds-error::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: #e0662a; }" },
+    { "name": "Dot Grille", "kind": "custom", "description": "The only ornament; empty and error states.", "html": "<div class=\"ds-grille\"></div>", "css": ".ds-grille { width: 72px; height: 40px; background-image: radial-gradient(#c9c9c4 1.6px, transparent 1.7px); background-size: 8px 8px; }" }
+  ],
+  "narrative": {
+    "northStar": "Braun Panel, less colour",
+    "overview": "A quiet instrument face after Dieter Rams' Braun product graphics: matte gray ground, white panels, graphite type, and one green key. Dense enough to see every application at once, calm enough to read as equipment rather than marketing.",
+    "keyCharacteristics": ["One coloured element per screen: the primary action.", "Flat white panels on warm gray, separated by 1px rules.", "Small uppercase labels name panels and table columns.", "A dot grille is the only ornament."],
+    "rules": [
+      { "name": "The One Key Rule", "body": "Green appears on exactly one control per screen, the primary action. Secondary actions (e.g. list \"Create\") are graphite ghost buttons. Nothing else is green.", "section": "colors" },
+      { "name": "The Mono-Is-Data Rule", "body": "JetBrains Mono is used for URLs and IDs and nothing else.", "section": "typography" },
+      { "name": "The UTC Rule", "body": "Dates render in UTC and say so (\"Created (UTC)\", \"… UTC\"). Counts and times use tabular numerals.", "section": "typography" }
+    ],
+    "dos": ["Do give each screen exactly one green key, and make it the primary action.", "Do separate surfaces with 1px rules and tone, not shadows.", "Do set URLs and IDs in mono, everything else in Hanken Grotesk.", "Do show dates in UTC, labelled as such.", "Do pair every error with the orange dot and plain wording beside the field."],
+    "donts": ["Don't use green for links, status, selection, or decoration.", "Don't add ornament beyond the dot grille, and don't use the grille outside empty or error states.", "Don't add drop shadows or radii other than 10px and 6px."]
+  }
+}
