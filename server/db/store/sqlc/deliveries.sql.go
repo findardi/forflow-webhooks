@@ -55,13 +55,19 @@ func (q *Queries) CreateDeliveriesForMessage(ctx context.Context, id pgtype.UUID
 }
 
 const getClaim = `-- name: GetClaim :one
-select d.id as delivery_id, m.id as message_id, e.url, m.payload
-from deliveries d
-join endpoints e on e.id = d.endpoint_id
-join messages m on m.id = d.message_id
-where d.status = 'pending'
-order by d.created_at
-limit 1
+update deliveries d
+set status = 'processing', updated_at = now()
+from messages m, endpoints e
+where d.id = (
+    select id from deliveries
+    where status = 'pending'
+    order by created_at
+    limit 1
+    for update skip locked
+)
+and m.id = d.message_id
+and e.id = d.endpoint_id
+returning d.id as delivery_id, m.id as message_id, e.url, m.payload
 `
 
 type GetClaimRow struct {

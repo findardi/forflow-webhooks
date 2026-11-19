@@ -38,6 +38,7 @@ func (s *Service) Claim(ctx context.Context) (sqlc.GetClaimRow, bool, error) {
 	job, err := s.q.GetClaim(ctx)
 
 	if errors.Is(err, pgx.ErrNoRows) {
+		s.Log.Info("no job pending")
 		return sqlc.GetClaimRow{}, false, nil
 	}
 
