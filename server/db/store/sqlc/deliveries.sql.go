@@ -7,6 +7,7 @@ package sqlc
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -47,6 +48,63 @@ and e.deleted_at is null
 
 func (q *Queries) CreateDeliveriesForMessage(ctx context.Context, id pgtype.UUID) (int64, error) {
 	result, err := q.db.Exec(ctx, createDeliveriesForMessage, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const getClaim = `-- name: GetClaim :one
+select d.id as delivery_id, m.id as message_id, e.url, m.payload
+from deliveries d
+join endpoints e on e.id = d.endpoint_id
+join messages m on m.id = d.message_id
+where d.status = 'pending'
+order by d.created_at
+limit 1
+`
+
+type GetClaimRow struct {
+	DeliveryID pgtype.UUID     `json:"delivery_id"`
+	MessageID  pgtype.UUID     `json:"message_id"`
+	Url        string          `json:"url"`
+	Payload    json.RawMessage `json:"payload"`
+}
+
+func (q *Queries) GetClaim(ctx context.Context) (GetClaimRow, error) {
+	row := q.db.QueryRow(ctx, getClaim)
+	var i GetClaimRow
+	err := row.Scan(
+		&i.DeliveryID,
+		&i.MessageID,
+		&i.Url,
+		&i.Payload,
+	)
+	return i, err
+}
+
+const markFailed = `-- name: MarkFailed :execrows
+update deliveries
+set status = 'failed', updated_at = now()
+where id = $1 and status = 'pending'
+`
+
+func (q *Queries) MarkFailed(ctx context.Context, id pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, markFailed, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const markSuccess = `-- name: MarkSuccess :execrows
+update deliveries
+set status = 'succeeded', updated_at = now()
+where id = $1 and status = 'pending'
+`
+
+func (q *Queries) MarkSuccess(ctx context.Context, id pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, markSuccess, id)
 	if err != nil {
 		return 0, err
 	}

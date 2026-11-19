@@ -12,6 +12,7 @@ import (
 	"github.com/findardi/forflow-webhooks/server/internal/config"
 	"github.com/findardi/forflow-webhooks/server/internal/endpoint"
 	"github.com/findardi/forflow-webhooks/server/internal/message"
+	"github.com/findardi/forflow-webhooks/server/internal/worker"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -53,6 +54,19 @@ func RunAPI(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	defer cancel()
 
 	return srv.Shutdown(shutdownCtx)
+}
+
+func RunWorker(ctx context.Context, cfg config.Config, log *slog.Logger) error {
+	pool, err := db.NewPool(ctx, cfg.DatabaseURL)
+	if err != nil {
+		return err
+	}
+
+	log.Info("database connection good")
+	defer pool.Close()
+
+	log.Info("worker started")
+	return worker.NewWorker(pool, log).Run(ctx)
 }
 
 func NewRouter(pool *pgxpool.Pool) http.Handler {

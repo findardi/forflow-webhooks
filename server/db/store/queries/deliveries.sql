@@ -18,3 +18,22 @@ update deliveries
 set status = 'canceled', updated_at = now()
 where status = 'pending'
 and endpoint_id in (select id from endpoints where application_id = $1);
+
+-- name: GetClaim :one
+select d.id as delivery_id, m.id as message_id, e.url, m.payload
+from deliveries d
+join endpoints e on e.id = d.endpoint_id
+join messages m on m.id = d.message_id
+where d.status = 'pending'
+order by d.created_at
+limit 1;
+
+-- name: MarkSuccess :execrows
+update deliveries
+set status = 'succeeded', updated_at = now()
+where id = $1 and status = 'pending';
+
+-- name: MarkFailed :execrows
+update deliveries
+set status = 'failed', updated_at = now()
+where id = $1 and status = 'pending';

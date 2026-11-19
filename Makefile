@@ -43,3 +43,6 @@ db-down:
 
 run-api:
 	cd server && go run ./cmd/api/
+
+run-worker:
+	cd server && go run ./cmd/worker/
