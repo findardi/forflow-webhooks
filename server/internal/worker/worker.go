@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/findardi/forflow-webhooks/server/db/store/sqlc"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/sync/errgroup"
 )
@@ -22,23 +23,29 @@ func NewWorker(pool *pgxpool.Pool, log *slog.Logger) *Worker {
 }
 
 func (w *Worker) Run(ctx context.Context) error {
-	wg, ctx := errgroup.WithContext(ctx)
+	jobs := make(chan sqlc.GetClaimRow)
+	g, ctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		defer close(jobs)
+		return w.pool(ctx, jobs)
+	})
 
 	for range 5 {
-		wg.Go(func() error {
-			return w.Loop(ctx)
+		g.Go(func() error {
+			for job := range jobs {
+				workCtx := context.WithoutCancel(ctx)
+				w.svc.Record(workCtx, job, w.svc.Send(workCtx, job))
+			}
+			return nil
 		})
 	}
 
-	return wg.Wait()
+	return g.Wait()
 }
 
-func (w *Worker) Loop(ctx context.Context) error {
+func (w *Worker) pool(ctx context.Context, jobs chan<- sqlc.GetClaimRow) error {
 	for {
-		if ctx.Err() != nil {
-			return nil
-		}
-
 		job, ok, err := w.svc.Claim(ctx)
 		if err != nil {
 			if ctx.Err() != nil {
@@ -57,9 +64,6 @@ func (w *Worker) Loop(ctx context.Context) error {
 			continue
 		}
 
-		// A claimed job finishes even during shutdown.
-		workCtx := context.WithoutCancel(ctx)
-		sent := w.svc.Send(workCtx, job)
-		w.svc.Record(workCtx, job, sent)
+		jobs <- job
 	}
 }

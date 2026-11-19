@@ -92,7 +92,7 @@ func (q *Queries) GetClaim(ctx context.Context) (GetClaimRow, error) {
 const markFailed = `-- name: MarkFailed :execrows
 update deliveries
 set status = 'failed', updated_at = now()
-where id = $1 and status = 'pending'
+where id = $1 and status = 'processing'
 `
 
 func (q *Queries) MarkFailed(ctx context.Context, id pgtype.UUID) (int64, error) {
@@ -106,7 +106,7 @@ func (q *Queries) MarkFailed(ctx context.Context, id pgtype.UUID) (int64, error)
 const markSuccess = `-- name: MarkSuccess :execrows
 update deliveries
 set status = 'succeeded', updated_at = now()
-where id = $1 and status = 'pending'
+where id = $1 and status = 'processing'
 `
 
 func (q *Queries) MarkSuccess(ctx context.Context, id pgtype.UUID) (int64, error) {
