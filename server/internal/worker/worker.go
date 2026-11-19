@@ -28,7 +28,7 @@ func (w *Worker) Run(ctx context.Context) error {
 
 	g.Go(func() error {
 		defer close(jobs)
-		return w.pool(ctx, jobs)
+		return w.poll(ctx, jobs)
 	})
 
 	for range 5 {
@@ -44,7 +44,7 @@ func (w *Worker) Run(ctx context.Context) error {
 	return g.Wait()
 }
 
-func (w *Worker) pool(ctx context.Context, jobs chan<- sqlc.GetClaimRow) error {
+func (w *Worker) poll(ctx context.Context, jobs chan<- sqlc.GetClaimRow) error {
 	for {
 		job, ok, err := w.svc.Claim(ctx)
 		if err != nil {
