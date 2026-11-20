@@ -1,3 +1,5 @@
 .env
 
 CLAUDE.local.md
+
+fake-api/

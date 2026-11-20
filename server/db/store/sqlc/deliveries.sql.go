@@ -7,6 +7,7 @@ package sqlc
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -47,6 +48,157 @@ and e.deleted_at is null
 
 func (q *Queries) CreateDeliveriesForMessage(ctx context.Context, id pgtype.UUID) (int64, error) {
 	result, err := q.db.Exec(ctx, createDeliveriesForMessage, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const getClaim = `-- name: GetClaim :one
+update deliveries d
+set status = 'processing', updated_at = now()
+from messages m, endpoints e
+where d.id = (
+    select p.id from deliveries p
+    join endpoints pe on pe.id = p.endpoint_id and pe.deleted_at is null
+    where p.status = 'pending'
+        and p.next_attempt_at <= now()
+        and (select count(*) from deliveries x
+            where x.endpoint_id = p.endpoint_id
+            and x.status = 'processing') < $1::int
+    order by p.next_attempt_at
+    limit 1
+    for update skip locked
+)
+and m.id = d.message_id
+and e.id = d.endpoint_id
+returning d.id as delivery_id, m.id as message_id, e.url, m.payload, d.attempt_count
+`
+
+type GetClaimRow struct {
+	DeliveryID   pgtype.UUID     `json:"delivery_id"`
+	MessageID    pgtype.UUID     `json:"message_id"`
+	Url          string          `json:"url"`
+	Payload      json.RawMessage `json:"payload"`
+	AttemptCount int32           `json:"attempt_count"`
+}
+
+func (q *Queries) GetClaim(ctx context.Context, maxPerEndpoint int32) (GetClaimRow, error) {
+	row := q.db.QueryRow(ctx, getClaim, maxPerEndpoint)
+	var i GetClaimRow
+	err := row.Scan(
+		&i.DeliveryID,
+		&i.MessageID,
+		&i.Url,
+		&i.Payload,
+		&i.AttemptCount,
+	)
+	return i, err
+}
+
+const getDeliveryByApplication = `-- name: GetDeliveryByApplication :one
+select d.id, d.message_id, d.endpoint_id, d.status, d.attempt_count, d.next_attempt_at,
+    d.created_at, d.updated_at, e.url as endpoint_url, m.payload
+from deliveries d
+join messages m on m.id = d.message_id
+join endpoints e on e.id = d.endpoint_id
+where d.id = $1
+and m.application_id = $2
+`
+
+type GetDeliveryByApplicationParams struct {
+	ID            pgtype.UUID `json:"id"`
+	ApplicationID pgtype.UUID `json:"application_id"`
+}
+
+type GetDeliveryByApplicationRow struct {
+	ID            pgtype.UUID        `json:"id"`
+	MessageID     pgtype.UUID        `json:"message_id"`
+	EndpointID    pgtype.UUID        `json:"endpoint_id"`
+	Status        string             `json:"status"`
+	AttemptCount  int32              `json:"attempt_count"`
+	NextAttemptAt pgtype.Timestamptz `json:"next_attempt_at"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+	EndpointUrl   string             `json:"endpoint_url"`
+	Payload       json.RawMessage    `json:"payload"`
+}
+
+func (q *Queries) GetDeliveryByApplication(ctx context.Context, arg GetDeliveryByApplicationParams) (GetDeliveryByApplicationRow, error) {
+	row := q.db.QueryRow(ctx, getDeliveryByApplication, arg.ID, arg.ApplicationID)
+	var i GetDeliveryByApplicationRow
+	err := row.Scan(
+		&i.ID,
+		&i.MessageID,
+		&i.EndpointID,
+		&i.Status,
+		&i.AttemptCount,
+		&i.NextAttemptAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.EndpointUrl,
+		&i.Payload,
+	)
+	return i, err
+}
+
+const markFailed = `-- name: MarkFailed :execrows
+update deliveries
+set status = 'failed', attempt_count = attempt_count + 1, updated_at = now()
+where id = $1 and status = 'processing'
+`
+
+func (q *Queries) MarkFailed(ctx context.Context, id pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, markFailed, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const markSuccess = `-- name: MarkSuccess :execrows
+update deliveries
+set status = 'succeeded', attempt_count = attempt_count + 1, updated_at = now()
+where id = $1 and status = 'processing'
+`
+
+func (q *Queries) MarkSuccess(ctx context.Context, id pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, markSuccess, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const resetProcessing = `-- name: ResetProcessing :execrows
+update deliveries set status = 'pending', updated_at = now()
+where status = 'processing'
+`
+
+func (q *Queries) ResetProcessing(ctx context.Context) (int64, error) {
+	result, err := q.db.Exec(ctx, resetProcessing)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const retryAttempt = `-- name: RetryAttempt :execrows
+update deliveries
+set status = 'pending',
+    attempt_count = attempt_count + 1,
+    next_attempt_at = $2,
+    updated_at = now()
+where id = $1 and status = 'processing'
+`
+
+type RetryAttemptParams struct {
+	ID            pgtype.UUID        `json:"id"`
+	NextAttemptAt pgtype.Timestamptz `json:"next_attempt_at"`
+}
+
+func (q *Queries) RetryAttempt(ctx context.Context, arg RetryAttemptParams) (int64, error) {
+	result, err := q.db.Exec(ctx, retryAttempt, arg.ID, arg.NextAttemptAt)
 	if err != nil {
 		return 0, err
 	}

@@ -67,13 +67,12 @@ func (s *Service) Create(ctx context.Context, request CreateRequest) (sqlc.Endpo
 	})
 
 	if err != nil {
-		// No row inserted: application missing or soft-deleted.
 		if errors.Is(err, pgx.ErrNoRows) {
 			return sqlc.Endpoint{}, ErrApplicationNotFound
 		}
 
 		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == "23505" { // unique_violation
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
 			return sqlc.Endpoint{}, ErrEndpointExists
 		}
 

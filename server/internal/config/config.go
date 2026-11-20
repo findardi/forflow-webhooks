@@ -11,12 +11,14 @@ import (
 type Config struct {
 	HTTPAddr    string
 	DatabaseURL string
+	Development string
 }
 
 func Load() (Config, error) {
 	cfg := Config{
 		HTTPAddr:    getEnv("HTTP_ADDR", ":8080"),
 		DatabaseURL: getEnv("DATABASE_URL", ""),
+		Development: getEnv("DEVELOPMENT", "prod"),
 	}
 	if cfg.DatabaseURL == "" {
 		return Config{}, errors.New("config: DATABASE_URL is required")

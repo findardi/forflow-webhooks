@@ -17,13 +17,23 @@ type Application struct {
 	DeletedAt pgtype.Timestamptz `json:"deleted_at"`
 }
 
+type Attempt struct {
+	ID             pgtype.UUID        `json:"id"`
+	DeliveryID     pgtype.UUID        `json:"delivery_id"`
+	ResponseStatus pgtype.Int4        `json:"response_status"`
+	ErrorKind      pgtype.Text        `json:"error_kind"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+}
+
 type Delivery struct {
-	ID         pgtype.UUID        `json:"id"`
-	MessageID  pgtype.UUID        `json:"message_id"`
-	EndpointID pgtype.UUID        `json:"endpoint_id"`
-	Status     string             `json:"status"`
-	CreatedAt  pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
+	ID            pgtype.UUID        `json:"id"`
+	MessageID     pgtype.UUID        `json:"message_id"`
+	EndpointID    pgtype.UUID        `json:"endpoint_id"`
+	Status        string             `json:"status"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+	NextAttemptAt pgtype.Timestamptz `json:"next_attempt_at"`
+	AttemptCount  int32              `json:"attempt_count"`
 }
 
 type Endpoint struct {
