@@ -60,10 +60,6 @@ type ListMessagesByApplicationRow struct {
 	EndpointUrl    pgtype.Text        `json:"endpoint_url"`
 }
 
-// One row per delivery, same shape as ListMessagesByEndpoint plus the endpoint.
-// Deleted endpoints stay in (their URL still shows); a message with no delivery
-// appears once with null delivery columns. Ties sort by URL descending because
-// the dashboard reverses the list to show newest first.
 func (q *Queries) ListMessagesByApplication(ctx context.Context, applicationID pgtype.UUID) ([]ListMessagesByApplicationRow, error) {
 	rows, err := q.db.Query(ctx, listMessagesByApplication, applicationID)
 	if err != nil {

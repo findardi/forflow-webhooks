@@ -25,6 +25,7 @@ set status = 'processing', updated_at = now()
 from messages m, endpoints e
 where d.id = (
     select p.id from deliveries p
+    join endpoints pe on pe.id = p.endpoint_id and pe.deleted_at is null
     where p.status = 'pending'
         and p.next_attempt_at <= now()
         and (select count(*) from deliveries x
@@ -37,8 +38,6 @@ where d.id = (
 and m.id = d.message_id
 and e.id = d.endpoint_id
 returning d.id as delivery_id, m.id as message_id, e.url, m.payload, d.attempt_count;
-
--- attempt_count counts every send, so all three outcomes increment it.
 
 -- name: MarkSuccess :execrows
 update deliveries
@@ -59,7 +58,6 @@ set status = 'pending',
 where id = $1 and status = 'processing';
 
 -- name: GetDeliveryByApplication :one
--- Scoped by application through the message, so a delivery of another app is not found.
 select d.id, d.message_id, d.endpoint_id, d.status, d.attempt_count, d.next_attempt_at,
     d.created_at, d.updated_at, e.url as endpoint_url, m.payload
 from deliveries d

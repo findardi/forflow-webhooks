@@ -1,6 +1,6 @@
 package endpoint
 
 type CreateRequest struct {
-	ApplicationID string `json:"-"` // from path {appID}
+	ApplicationID string `json:"-"`
 	URL           string `json:"url"`
 }

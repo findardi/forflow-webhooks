@@ -50,8 +50,6 @@ func (s *Service) Get(ctx context.Context, applicationID, deliveryID string) (sq
 	return d, nil
 }
 
-// ListAttempts returns the delivery's attempts, oldest first.
-// ErrDeliveryNotFound when the delivery does not belong to the application.
 func (s *Service) ListAttempts(ctx context.Context, applicationID, deliveryID string) ([]sqlc.Attempt, error) {
 	d, err := s.Get(ctx, applicationID, deliveryID)
 	if err != nil {

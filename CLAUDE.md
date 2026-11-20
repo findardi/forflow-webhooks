@@ -21,6 +21,11 @@ This is a learning project, not a production product. Build one stage at a time.
 - Keep schemas and code minimal. Add a column, status, or table only when the current stage needs it.
 - Do not name or hint at later problems. The user finds them by running the code.
 
+## Comments
+
+- Do not add comments that justify or explain your own solution (for example, "why this fix is needed"). Put that reasoning in the chat, not in the code.
+- Do not add comments to about 99% of code. Add one only when the code cannot show a non-obvious constraint by itself (for example, a concurrency or ordering rule).
+
 ## Setup
 
 Required tools: `go`, `bun`, `docker`, `goose`, `sqlc`, `golangci-lint`.

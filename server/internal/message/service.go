@@ -57,7 +57,6 @@ func (s *Service) CreateMessage(ctx context.Context, request CreateMessage) (sql
 	})
 
 	if err != nil {
-		// No row inserted: application missing or soft-deleted.
 		if errors.Is(err, pgx.ErrNoRows) {
 			return sqlc.Message{}, ErrApplicationNotFound
 		}

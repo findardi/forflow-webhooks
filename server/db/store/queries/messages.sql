@@ -18,10 +18,6 @@ and m.application_id = sqlc.arg(application_id)
 order by m.created_at asc;
 
 -- name: ListMessagesByApplication :many
--- One row per delivery, same shape as ListMessagesByEndpoint plus the endpoint.
--- Deleted endpoints stay in (their URL still shows); a message with no delivery
--- appears once with null delivery columns. Ties sort by URL descending because
--- the dashboard reverses the list to show newest first.
 select m.id, m.application_id, m.payload, m.created_at,
     d.id as delivery_id, d.status as delivery_status, e.url as endpoint_url
 from messages m

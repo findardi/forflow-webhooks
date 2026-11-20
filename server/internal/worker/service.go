@@ -19,7 +19,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Wait before each retry. 1 first send + len(retrySchedule) retries = 7 attempts total.
 var retrySchedule = []time.Duration{
 	5 * time.Second,
 	5 * time.Minute,
@@ -79,9 +78,9 @@ func (s *Service) Claim(ctx context.Context, maxPerEndpoint int32) (sqlc.GetClai
 type outcome int
 
 const (
-	outcomeSent outcome = iota // endpoint replied 2xx
+	outcomeSent outcome = iota
 	outcomeEndpointFailed
-	outcomeDiscarded // request could not be built; never retried
+	outcomeDiscarded
 )
 
 type sendResult struct {
@@ -94,8 +93,6 @@ func errorKind(err error) string {
 	var dnsErr *net.DNSError
 	var netErr net.Error
 	switch {
-	// case errors.Is(err, netguard.ErrBlocked):
-	// 	return "blocked"
 	case errors.As(err, &dnsErr):
 		return "dns"
 	case errors.As(err, &netErr) && netErr.Timeout():
@@ -109,7 +106,7 @@ func errorKind(err error) string {
 func (s *Service) Send(ctx context.Context, job sqlc.GetClaimRow) sendResult {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, job.Url, bytes.NewReader(job.Payload))
 	if err != nil {
-		s.Log.Warn("build request", "delivery_id", job.DeliveryID.String(), "error", err)
+		s.Log.Warn("build request", "delivery_id", job.DeliveryID.String())
 		return sendResult{
 			outcome:   outcomeDiscarded,
 			errorKind: "invalid_request",
@@ -121,10 +118,11 @@ func (s *Service) Send(ctx context.Context, job sqlc.GetClaimRow) sendResult {
 
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
-		s.Log.Warn("send request", "delivery_id", job.DeliveryID.String(), "error", err)
+		kind := errorKind(err)
+		s.Log.Warn("send request", "delivery_id", job.DeliveryID.String(), "error_kind", kind)
 		return sendResult{
 			outcome:   outcomeEndpointFailed,
-			errorKind: errorKind(err),
+			errorKind: kind,
 		}
 	}
 

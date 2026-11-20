@@ -60,6 +60,7 @@ set status = 'processing', updated_at = now()
 from messages m, endpoints e
 where d.id = (
     select p.id from deliveries p
+    join endpoints pe on pe.id = p.endpoint_id and pe.deleted_at is null
     where p.status = 'pending'
         and p.next_attempt_at <= now()
         and (select count(*) from deliveries x
@@ -123,7 +124,6 @@ type GetDeliveryByApplicationRow struct {
 	Payload       json.RawMessage    `json:"payload"`
 }
 
-// Scoped by application through the message, so a delivery of another app is not found.
 func (q *Queries) GetDeliveryByApplication(ctx context.Context, arg GetDeliveryByApplicationParams) (GetDeliveryByApplicationRow, error) {
 	row := q.db.QueryRow(ctx, getDeliveryByApplication, arg.ID, arg.ApplicationID)
 	var i GetDeliveryByApplicationRow
@@ -157,13 +157,11 @@ func (q *Queries) MarkFailed(ctx context.Context, id pgtype.UUID) (int64, error)
 }
 
 const markSuccess = `-- name: MarkSuccess :execrows
-
 update deliveries
 set status = 'succeeded', attempt_count = attempt_count + 1, updated_at = now()
 where id = $1 and status = 'processing'
 `
 
-// attempt_count counts every send, so all three outcomes increment it.
 func (q *Queries) MarkSuccess(ctx context.Context, id pgtype.UUID) (int64, error) {
 	result, err := q.db.Exec(ctx, markSuccess, id)
 	if err != nil {

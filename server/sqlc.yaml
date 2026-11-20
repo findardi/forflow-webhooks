@@ -12,6 +12,5 @@ sql:
         emit_json_tags: true
         json_tags_case_style: snake
         overrides:
-          # Raw JSON in and out; []byte would be base64-encoded in responses.
           - column: "messages.payload"
             go_type: "encoding/json.RawMessage"
