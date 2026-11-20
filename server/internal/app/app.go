@@ -3,11 +3,13 @@ package app
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
 
 	"github.com/findardi/forflow-webhooks/server/db"
+	"github.com/findardi/forflow-webhooks/server/db/store/sqlc"
 	"github.com/findardi/forflow-webhooks/server/internal/application"
 	"github.com/findardi/forflow-webhooks/server/internal/config"
 	"github.com/findardi/forflow-webhooks/server/internal/delivery"
@@ -27,6 +29,13 @@ func RunAPI(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 
 	log.Info("database connection good")
 	defer pool.Close()
+
+	if cfg.Development == "dev" {
+		if err := sqlc.New(pool).ResetDevData(ctx); err != nil {
+			return fmt.Errorf("reset dev data: %w", err)
+		}
+		log.Warn("dev mode: attempts, deliveries, messages truncated")
+	}
 
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,

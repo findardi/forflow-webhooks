@@ -43,7 +43,7 @@ type Service struct {
 func NewService(pool *pgxpool.Pool, log *slog.Logger, development string) *Service {
 	var transport http.RoundTripper
 
-	if development == "dev" {
+	if development == "prod" {
 		transport = netguard.NewTransport()
 	}
 	return &Service{
