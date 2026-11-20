@@ -59,10 +59,13 @@ update deliveries d
 set status = 'processing', updated_at = now()
 from messages m, endpoints e
 where d.id = (
-    select id from deliveries
-    where status = 'pending'
-    and next_attempt_at <= now()
-    order by next_attempt_at
+    select p.id from deliveries p
+    where p.status = 'pending'
+        and p.next_attempt_at <= now()
+        and (select count(*) from deliveries x
+            where x.endpoint_id = p.endpoint_id
+            and x.status = 'processing') < $1::int
+    order by p.next_attempt_at
     limit 1
     for update skip locked
 )
@@ -79,8 +82,8 @@ type GetClaimRow struct {
 	AttemptCount int32           `json:"attempt_count"`
 }
 
-func (q *Queries) GetClaim(ctx context.Context) (GetClaimRow, error) {
-	row := q.db.QueryRow(ctx, getClaim)
+func (q *Queries) GetClaim(ctx context.Context, maxPerEndpoint int32) (GetClaimRow, error) {
+	row := q.db.QueryRow(ctx, getClaim, maxPerEndpoint)
 	var i GetClaimRow
 	err := row.Scan(
 		&i.DeliveryID,
@@ -163,6 +166,19 @@ where id = $1 and status = 'processing'
 // attempt_count counts every send, so all three outcomes increment it.
 func (q *Queries) MarkSuccess(ctx context.Context, id pgtype.UUID) (int64, error) {
 	result, err := q.db.Exec(ctx, markSuccess, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const resetProcessing = `-- name: ResetProcessing :execrows
+update deliveries set status = 'pending', updated_at = now()
+where status = 'processing'
+`
+
+func (q *Queries) ResetProcessing(ctx context.Context) (int64, error) {
+	result, err := q.db.Exec(ctx, resetProcessing)
 	if err != nil {
 		return 0, err
 	}

@@ -2,6 +2,7 @@ package worker
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -10,7 +11,11 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-const pollInterval = time.Second
+const (
+	pollInterval   = time.Second
+	workers        = 50
+	maxPerEndpoint = 2
+)
 
 type Worker struct {
 	svc *Service
@@ -23,19 +28,30 @@ func NewWorker(pool *pgxpool.Pool, log *slog.Logger) *Worker {
 }
 
 func (w *Worker) Run(ctx context.Context) error {
+	n, err := w.svc.q.ResetProcessing(ctx)
+	if err != nil {
+		return fmt.Errorf("reset processing: %w", err)
+	}
+
+	if n > 0 {
+		w.svc.Log.Warn("orpahned deliveries reset to pending", "count", n)
+	}
+
 	jobs := make(chan sqlc.GetClaimRow)
+	sem := make(chan struct{}, workers)
 	g, ctx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
 		defer close(jobs)
-		return w.poll(ctx, jobs)
+		return w.poll(ctx, jobs, sem)
 	})
 
-	for range 5 {
+	for range workers {
 		g.Go(func() error {
 			for job := range jobs {
 				workCtx := context.WithoutCancel(ctx)
 				w.svc.Record(workCtx, job, w.svc.Send(workCtx, job))
+				<-sem
 			}
 			return nil
 		})
@@ -44,10 +60,17 @@ func (w *Worker) Run(ctx context.Context) error {
 	return g.Wait()
 }
 
-func (w *Worker) poll(ctx context.Context, jobs chan<- sqlc.GetClaimRow) error {
+func (w *Worker) poll(ctx context.Context, jobs chan<- sqlc.GetClaimRow, sem chan struct{}) error {
 	for {
-		job, ok, err := w.svc.Claim(ctx)
+		select {
+		case <-ctx.Done():
+			return nil
+		case sem <- struct{}{}:
+		}
+
+		job, ok, err := w.svc.Claim(ctx, maxPerEndpoint)
 		if err != nil {
+			<-sem
 			if ctx.Err() != nil {
 				return nil
 			}
@@ -56,6 +79,7 @@ func (w *Worker) poll(ctx context.Context, jobs chan<- sqlc.GetClaimRow) error {
 		}
 
 		if !ok {
+			<-sem
 			select {
 			case <-ctx.Done():
 				return nil

@@ -45,7 +45,7 @@ func NewService(pool *pgxpool.Pool, log *slog.Logger) *Service {
 		q:    sqlc.New(pool),
 		Pool: pool,
 		httpClient: &http.Client{
-			Timeout:       30 * time.Second,
+			Timeout:       15 * time.Second,
 			CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 		},
 		Log:    log,
@@ -61,8 +61,8 @@ func tenPercentJitter(d time.Duration) time.Duration {
 	return d + rand.N(d/10)
 }
 
-func (s *Service) Claim(ctx context.Context) (sqlc.GetClaimRow, bool, error) {
-	job, err := s.q.GetClaim(ctx)
+func (s *Service) Claim(ctx context.Context, maxPerEndpoint int32) (sqlc.GetClaimRow, bool, error) {
+	job, err := s.q.GetClaim(ctx, maxPerEndpoint)
 
 	if errors.Is(err, pgx.ErrNoRows) {
 		s.Log.Debug("no job pending")

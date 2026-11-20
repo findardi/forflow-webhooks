@@ -24,10 +24,13 @@ update deliveries d
 set status = 'processing', updated_at = now()
 from messages m, endpoints e
 where d.id = (
-    select id from deliveries
-    where status = 'pending'
-    and next_attempt_at <= now()
-    order by next_attempt_at
+    select p.id from deliveries p
+    where p.status = 'pending'
+        and p.next_attempt_at <= now()
+        and (select count(*) from deliveries x
+            where x.endpoint_id = p.endpoint_id
+            and x.status = 'processing') < sqlc.arg(max_per_endpoint)::int
+    order by p.next_attempt_at
     limit 1
     for update skip locked
 )
@@ -64,3 +67,7 @@ join messages m on m.id = d.message_id
 join endpoints e on e.id = d.endpoint_id
 where d.id = sqlc.arg(id)
 and m.application_id = sqlc.arg(application_id);
+
+-- name: ResetProcessing :execrows
+update deliveries set status = 'pending', updated_at = now()
+where status = 'processing';
