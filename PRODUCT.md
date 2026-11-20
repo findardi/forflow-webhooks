@@ -37,14 +37,17 @@ API available today (Go, `server/internal/app/app.go`):
 - `POST /applications/{appID}/messages` with `{ payload }` (any JSON value except null, request body under 4 KB). Creates one `pending` delivery per live endpoint in the same transaction. 400 invalid payload or app ID, 404 application not found.
 - `GET /applications/{appID}/endpoints/{endpointID}/messages`. Messages delivered to that endpoint with their `delivery_status` (`pending`, `succeeded`, `failed`, `canceled`), oldest first.
 - `GET /applications/{appID}/messages`. One row per delivery of the application's messages (`delivery_id`, `delivery_status`, `endpoint_url`), oldest first, deleted endpoints included. A message with no delivery appears once with those fields null.
+- `GET /applications/{appID}/deliveries/{deliveryID}`. One delivery: `status` (`pending`, `processing`, `succeeded`, `failed`, `canceled`), `attempt_count` (every send, success included), `next_attempt_at`, `created_at`, `updated_at`, `endpoint_url`, `message_id`, `payload`. 400 invalid ID, 404 when the delivery does not belong to the application.
+- `GET /applications/{appID}/deliveries/{deliveryID}/attempts`. One row per HTTP try, oldest first: `response_status` when the endpoint replied, otherwise `error_kind` (`dns`, `timeout`, `conn_refused`, `invalid_request`, `other`). Same 400/404 rules.
+- Both message lists also return `delivery_id`.
 - JSON responses use snake_case. Errors are plain text bodies.
 - Records: application `id` (UUIDv7), `name`, `created_at`, `deleted_at`. Endpoint `id`, `application_id`, `url`, `created_at`. Message `id`, `application_id`, `payload`, `created_at`.
 
 Scope rules:
 
-- The dashboard covers only the APIs above. Do not design screens or fake data for delivery status, attempts, event types, or API keys until the API exists.
+- The dashboard covers only the APIs above. Do not design screens or fake data for event types or API keys until the API exists.
 - No auth for now. Login, environments, and the auto-created organization come later.
-- No update endpoints exist yet. No delivery worker exists yet, so every delivery stays `pending`.
+- No update endpoints exist yet. A separate worker process sends pending deliveries and retries failures on a schedule, up to 7 attempts.
 
 Stack: SvelteKit (Svelte 5 runes), TypeScript, Bun, Vite. Prettier: tabs, single quotes, no trailing commas, width 100.
 

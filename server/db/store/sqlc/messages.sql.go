@@ -93,7 +93,8 @@ func (q *Queries) ListMessagesByApplication(ctx context.Context, applicationID p
 }
 
 const listMessagesByEndpoint = `-- name: ListMessagesByEndpoint :many
-select m.id, m.application_id, m.payload, m.created_at, d.status as delivery_status
+select m.id, m.application_id, m.payload, m.created_at,
+    d.id as delivery_id, d.status as delivery_status
 from messages m
 join deliveries d on d.message_id = m.id
 where d.endpoint_id = $1
@@ -111,6 +112,7 @@ type ListMessagesByEndpointRow struct {
 	ApplicationID  pgtype.UUID        `json:"application_id"`
 	Payload        json.RawMessage    `json:"payload"`
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	DeliveryID     pgtype.UUID        `json:"delivery_id"`
 	DeliveryStatus string             `json:"delivery_status"`
 }
 
@@ -128,6 +130,7 @@ func (q *Queries) ListMessagesByEndpoint(ctx context.Context, arg ListMessagesBy
 			&i.ApplicationID,
 			&i.Payload,
 			&i.CreatedAt,
+			&i.DeliveryID,
 			&i.DeliveryStatus,
 		); err != nil {
 			return nil, err

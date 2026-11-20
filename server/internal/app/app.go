@@ -10,6 +10,7 @@ import (
 	"github.com/findardi/forflow-webhooks/server/db"
 	"github.com/findardi/forflow-webhooks/server/internal/application"
 	"github.com/findardi/forflow-webhooks/server/internal/config"
+	"github.com/findardi/forflow-webhooks/server/internal/delivery"
 	"github.com/findardi/forflow-webhooks/server/internal/endpoint"
 	"github.com/findardi/forflow-webhooks/server/internal/message"
 	"github.com/findardi/forflow-webhooks/server/internal/worker"
@@ -75,6 +76,7 @@ func NewRouter(pool *pgxpool.Pool) http.Handler {
 	registerApplicationRoutes(mux, pool)
 	registerEndpointRoutes(mux, pool)
 	registerMessageRoutes(mux, pool)
+	registerDeliveryRoutes(mux, pool)
 
 	return mux
 }
@@ -101,4 +103,11 @@ func registerMessageRoutes(mux *http.ServeMux, pool *pgxpool.Pool) {
 	mux.HandleFunc("POST /applications/{appID}/messages", h.CreateMessage)
 	mux.HandleFunc("GET /applications/{appID}/messages", h.ListByApplication)
 	mux.HandleFunc("GET /applications/{appID}/endpoints/{endpointID}/messages", h.ListMessage)
+}
+
+func registerDeliveryRoutes(mux *http.ServeMux, pool *pgxpool.Pool) {
+	h := delivery.NewHandler(pool)
+
+	mux.HandleFunc("GET /applications/{appID}/deliveries/{deliveryID}", h.Get)
+	mux.HandleFunc("GET /applications/{appID}/deliveries/{deliveryID}/attempts", h.ListAttempts)
 }

@@ -54,3 +54,13 @@ set status = 'pending',
     next_attempt_at = $2,
     updated_at = now()
 where id = $1 and status = 'processing';
+
+-- name: GetDeliveryByApplication :one
+-- Scoped by application through the message, so a delivery of another app is not found.
+select d.id, d.message_id, d.endpoint_id, d.status, d.attempt_count, d.next_attempt_at,
+    d.created_at, d.updated_at, e.url as endpoint_url, m.payload
+from deliveries d
+join messages m on m.id = d.message_id
+join endpoints e on e.id = d.endpoint_id
+where d.id = sqlc.arg(id)
+and m.application_id = sqlc.arg(application_id);

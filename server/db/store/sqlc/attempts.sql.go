@@ -28,3 +28,36 @@ func (q *Queries) CreateAttempt(ctx context.Context, arg CreateAttemptParams) er
 	_, err := q.db.Exec(ctx, createAttempt, arg.DeliveryID, arg.ResponseStatus, arg.ErrorKind)
 	return err
 }
+
+const listAttemptsByDelivery = `-- name: ListAttemptsByDelivery :many
+select id, delivery_id, response_status, error_kind, created_at
+from attempts
+where delivery_id = $1
+order by created_at asc
+`
+
+func (q *Queries) ListAttemptsByDelivery(ctx context.Context, deliveryID pgtype.UUID) ([]Attempt, error) {
+	rows, err := q.db.Query(ctx, listAttemptsByDelivery, deliveryID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Attempt{}
+	for rows.Next() {
+		var i Attempt
+		if err := rows.Scan(
+			&i.ID,
+			&i.DeliveryID,
+			&i.ResponseStatus,
+			&i.ErrorKind,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

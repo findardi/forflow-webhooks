@@ -92,6 +92,53 @@ func (q *Queries) GetClaim(ctx context.Context) (GetClaimRow, error) {
 	return i, err
 }
 
+const getDeliveryByApplication = `-- name: GetDeliveryByApplication :one
+select d.id, d.message_id, d.endpoint_id, d.status, d.attempt_count, d.next_attempt_at,
+    d.created_at, d.updated_at, e.url as endpoint_url, m.payload
+from deliveries d
+join messages m on m.id = d.message_id
+join endpoints e on e.id = d.endpoint_id
+where d.id = $1
+and m.application_id = $2
+`
+
+type GetDeliveryByApplicationParams struct {
+	ID            pgtype.UUID `json:"id"`
+	ApplicationID pgtype.UUID `json:"application_id"`
+}
+
+type GetDeliveryByApplicationRow struct {
+	ID            pgtype.UUID        `json:"id"`
+	MessageID     pgtype.UUID        `json:"message_id"`
+	EndpointID    pgtype.UUID        `json:"endpoint_id"`
+	Status        string             `json:"status"`
+	AttemptCount  int32              `json:"attempt_count"`
+	NextAttemptAt pgtype.Timestamptz `json:"next_attempt_at"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+	EndpointUrl   string             `json:"endpoint_url"`
+	Payload       json.RawMessage    `json:"payload"`
+}
+
+// Scoped by application through the message, so a delivery of another app is not found.
+func (q *Queries) GetDeliveryByApplication(ctx context.Context, arg GetDeliveryByApplicationParams) (GetDeliveryByApplicationRow, error) {
+	row := q.db.QueryRow(ctx, getDeliveryByApplication, arg.ID, arg.ApplicationID)
+	var i GetDeliveryByApplicationRow
+	err := row.Scan(
+		&i.ID,
+		&i.MessageID,
+		&i.EndpointID,
+		&i.Status,
+		&i.AttemptCount,
+		&i.NextAttemptAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.EndpointUrl,
+		&i.Payload,
+	)
+	return i, err
+}
+
 const markFailed = `-- name: MarkFailed :execrows
 update deliveries
 set status = 'failed', attempt_count = attempt_count + 1, updated_at = now()

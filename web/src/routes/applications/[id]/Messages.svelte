@@ -155,6 +155,7 @@
 					<th class="label status-col" scope="col">Status</th>
 					<th class="label id-col" scope="col">ID</th>
 					<th class="label time" scope="col">Created (UTC)</th>
+					<th class="act-col" scope="col"><span class="sr-only">Attempts</span></th>
 				</tr>
 			</thead>
 			<tbody>
@@ -178,6 +179,31 @@
 						<td class="status-col">{@render status(m.delivery_status)}</td>
 						<td class="mono dim id-col" title={m.id}>{m.id.slice(0, 8)}</td>
 						<td class="time"><time datetime={m.created_at}>{dateShort(m.created_at)}</time></td>
+						<td class="act-col">
+							{#if m.delivery_id}
+								<a
+									class="eye"
+									href="/applications/{appId}/deliveries/{m.delivery_id}"
+									title="View attempts"
+									aria-label="View attempts of the delivery to {m.endpoint_url ?? 'this endpoint'}"
+								>
+									<svg
+										viewBox="0 0 24 24"
+										width="18"
+										height="18"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="1.5"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										aria-hidden="true"
+									>
+										<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" />
+										<circle cx="12" cy="12" r="3" />
+									</svg>
+								</a>
+							{/if}
+						</td>
 					</tr>
 				{/each}
 			</tbody>
@@ -308,7 +334,30 @@
 		color: var(--ink-2);
 	}
 
-	/* Status is words, not colour: only a failure earns the error rust and its dot. */
+	/* Eye: the row's way into its delivery. The time beside it gives up some padding. */
+	.time {
+		padding-right: 8px;
+	}
+
+	.act-col {
+		width: 56px;
+		padding: 10px 20px 0 0;
+	}
+
+	.eye {
+		display: grid;
+		place-items: center;
+		width: 32px;
+		height: 32px;
+		border-radius: var(--radius-s);
+		color: var(--ink-2);
+	}
+
+	.eye:hover {
+		background: var(--ground);
+		color: var(--ink);
+	}
+
 	.status-col {
 		width: 130px;
 	}
@@ -318,38 +367,6 @@
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
-	}
-
-	.status.none {
-		color: var(--ink-3);
-	}
-
-	.status {
-		text-transform: capitalize;
-	}
-
-	.status.pending {
-		color: var(--ink-2);
-	}
-
-	.status.canceled {
-		color: var(--ink-3);
-	}
-
-	.status.failed {
-		display: inline-flex;
-		align-items: center;
-		gap: 8px;
-		color: var(--error);
-		font-weight: 500;
-	}
-
-	.status.failed::before {
-		content: '';
-		width: 8px;
-		height: 8px;
-		border-radius: 50%;
-		background: var(--error-dot);
 	}
 
 	.inline {
@@ -439,6 +456,12 @@
 
 		.time {
 			width: 130px;
+			padding-right: 4px;
+		}
+
+		.act-col {
+			width: 48px;
+			padding-inline: 0 16px;
 		}
 	}
 </style>

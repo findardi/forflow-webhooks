@@ -198,6 +198,41 @@ a {
 	background: var(--error-dot);
 }
 
+/* Delivery status is a word, never a pill: only failure earns the rust and its dot. */
+.status {
+	text-transform: capitalize;
+}
+
+.status.pending,
+.status.processing {
+	color: var(--ink-2);
+}
+
+.status.canceled,
+.status.none {
+	color: var(--ink-3);
+}
+
+/* .fail: the same signal for a failed attempt, without the capitalized word. */
+.status.failed,
+.fail {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	color: var(--error);
+	font-weight: 500;
+}
+
+.status.failed::before,
+.fail::before {
+	content: '';
+	flex: none;
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: var(--error-dot);
+}
+
 /* Speaker-grille dot field: the one ornament, used for empty states. */
 .grille {
 	background-image: radial-gradient(var(--grille) 1.6px, transparent 1.7px);

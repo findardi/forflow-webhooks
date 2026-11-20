@@ -23,16 +23,40 @@ export type Message = {
 	created_at: string;
 };
 
-export type DeliveryStatus = 'pending' | 'succeeded' | 'failed' | 'canceled';
+export type DeliveryStatus = 'pending' | 'processing' | 'succeeded' | 'failed' | 'canceled';
 
 /**
- * One row per delivery. Per endpoint: status only. Per application: also the delivery ID and
- * endpoint URL, all null when the message reached no endpoint.
+ * One row per delivery. Per application: also the endpoint URL. Delivery fields are null when
+ * the message reached no endpoint.
  */
 export type DeliveredMessage = Message & {
-	delivery_id?: string | null;
+	delivery_id: string | null;
 	delivery_status: DeliveryStatus | null;
 	endpoint_url?: string | null;
+};
+
+export type Delivery = {
+	id: string;
+	message_id: string;
+	endpoint_id: string;
+	status: DeliveryStatus;
+	/** Every send counts, success included. */
+	attempt_count: number;
+	/** When a pending delivery is next sent. Left as-is once the delivery is final. */
+	next_attempt_at: string;
+	created_at: string;
+	updated_at: string | null;
+	endpoint_url: string;
+	payload: unknown;
+};
+
+/** One HTTP try. Exactly one of response_status and error_kind is set. */
+export type Attempt = {
+	id: string;
+	delivery_id: string;
+	response_status: number | null;
+	error_kind: 'dns' | 'timeout' | 'conn_refused' | 'invalid_request' | 'other' | null;
+	created_at: string;
 };
 
 export class ApiError extends Error {
