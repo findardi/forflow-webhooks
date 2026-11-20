@@ -61,20 +61,22 @@ from messages m, endpoints e
 where d.id = (
     select id from deliveries
     where status = 'pending'
-    order by created_at
+    and next_attempt_at <= now()
+    order by next_attempt_at
     limit 1
     for update skip locked
 )
 and m.id = d.message_id
 and e.id = d.endpoint_id
-returning d.id as delivery_id, m.id as message_id, e.url, m.payload
+returning d.id as delivery_id, m.id as message_id, e.url, m.payload, d.attempt_count
 `
 
 type GetClaimRow struct {
-	DeliveryID pgtype.UUID     `json:"delivery_id"`
-	MessageID  pgtype.UUID     `json:"message_id"`
-	Url        string          `json:"url"`
-	Payload    json.RawMessage `json:"payload"`
+	DeliveryID   pgtype.UUID     `json:"delivery_id"`
+	MessageID    pgtype.UUID     `json:"message_id"`
+	Url          string          `json:"url"`
+	Payload      json.RawMessage `json:"payload"`
+	AttemptCount int32           `json:"attempt_count"`
 }
 
 func (q *Queries) GetClaim(ctx context.Context) (GetClaimRow, error) {
@@ -85,13 +87,14 @@ func (q *Queries) GetClaim(ctx context.Context) (GetClaimRow, error) {
 		&i.MessageID,
 		&i.Url,
 		&i.Payload,
+		&i.AttemptCount,
 	)
 	return i, err
 }
 
 const markFailed = `-- name: MarkFailed :execrows
 update deliveries
-set status = 'failed', updated_at = now()
+set status = 'failed', attempt_count = attempt_count + 1, updated_at = now()
 where id = $1 and status = 'processing'
 `
 
@@ -104,13 +107,37 @@ func (q *Queries) MarkFailed(ctx context.Context, id pgtype.UUID) (int64, error)
 }
 
 const markSuccess = `-- name: MarkSuccess :execrows
+
 update deliveries
-set status = 'succeeded', updated_at = now()
+set status = 'succeeded', attempt_count = attempt_count + 1, updated_at = now()
 where id = $1 and status = 'processing'
 `
 
+// attempt_count counts every send, so all three outcomes increment it.
 func (q *Queries) MarkSuccess(ctx context.Context, id pgtype.UUID) (int64, error) {
 	result, err := q.db.Exec(ctx, markSuccess, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const retryAttempt = `-- name: RetryAttempt :execrows
+update deliveries
+set status = 'pending',
+    attempt_count = attempt_count + 1,
+    next_attempt_at = $2,
+    updated_at = now()
+where id = $1 and status = 'processing'
+`
+
+type RetryAttemptParams struct {
+	ID            pgtype.UUID        `json:"id"`
+	NextAttemptAt pgtype.Timestamptz `json:"next_attempt_at"`
+}
+
+func (q *Queries) RetryAttempt(ctx context.Context, arg RetryAttemptParams) (int64, error) {
+	result, err := q.db.Exec(ctx, retryAttempt, arg.ID, arg.NextAttemptAt)
 	if err != nil {
 		return 0, err
 	}

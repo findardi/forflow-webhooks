@@ -26,20 +26,31 @@ from messages m, endpoints e
 where d.id = (
     select id from deliveries
     where status = 'pending'
-    order by created_at
+    and next_attempt_at <= now()
+    order by next_attempt_at
     limit 1
     for update skip locked
 )
 and m.id = d.message_id
 and e.id = d.endpoint_id
-returning d.id as delivery_id, m.id as message_id, e.url, m.payload;
+returning d.id as delivery_id, m.id as message_id, e.url, m.payload, d.attempt_count;
+
+-- attempt_count counts every send, so all three outcomes increment it.
 
 -- name: MarkSuccess :execrows
 update deliveries
-set status = 'succeeded', updated_at = now()
+set status = 'succeeded', attempt_count = attempt_count + 1, updated_at = now()
 where id = $1 and status = 'processing';
 
 -- name: MarkFailed :execrows
 update deliveries
-set status = 'failed', updated_at = now()
+set status = 'failed', attempt_count = attempt_count + 1, updated_at = now()
+where id = $1 and status = 'processing';
+
+-- name: RetryAttempt :execrows
+update deliveries
+set status = 'pending',
+    attempt_count = attempt_count + 1,
+    next_attempt_at = $2,
+    updated_at = now()
 where id = $1 and status = 'processing';

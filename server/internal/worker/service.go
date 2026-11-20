@@ -7,13 +7,27 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"math/rand/v2"
+	"net"
 	"net/http"
+	"syscall"
 	"time"
 
 	"github.com/findardi/forflow-webhooks/server/db/store/sqlc"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+// Wait before each retry. 1 first send + len(retrySchedule) retries = 7 attempts total.
+var retrySchedule = []time.Duration{
+	5 * time.Second,
+	5 * time.Minute,
+	30 * time.Minute,
+	2 * time.Hour,
+	5 * time.Hour,
+	10 * time.Hour,
+}
 
 const maxDrainBytes = 64 << 10
 
@@ -21,24 +35,37 @@ type Service struct {
 	q          *sqlc.Queries
 	httpClient *http.Client
 	Log        *slog.Logger
+	Pool       *pgxpool.Pool
+	now        func() time.Time
+	jitter     func(time.Duration) time.Duration
 }
 
 func NewService(pool *pgxpool.Pool, log *slog.Logger) *Service {
 	return &Service{
-		q: sqlc.New(pool),
+		q:    sqlc.New(pool),
+		Pool: pool,
 		httpClient: &http.Client{
 			Timeout:       30 * time.Second,
 			CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 		},
-		Log: log,
+		Log:    log,
+		now:    time.Now,
+		jitter: tenPercentJitter,
 	}
+}
+
+func tenPercentJitter(d time.Duration) time.Duration {
+	if d < 10 {
+		return d
+	}
+	return d + rand.N(d/10)
 }
 
 func (s *Service) Claim(ctx context.Context) (sqlc.GetClaimRow, bool, error) {
 	job, err := s.q.GetClaim(ctx)
 
 	if errors.Is(err, pgx.ErrNoRows) {
-		s.Log.Info("no job pending")
+		s.Log.Debug("no job pending")
 		return sqlc.GetClaimRow{}, false, nil
 	}
 
@@ -49,11 +76,44 @@ func (s *Service) Claim(ctx context.Context) (sqlc.GetClaimRow, bool, error) {
 	return job, true, nil
 }
 
-func (s *Service) Send(ctx context.Context, job sqlc.GetClaimRow) bool {
+type outcome int
+
+const (
+	outcomeSent outcome = iota // endpoint replied 2xx
+	outcomeEndpointFailed
+	outcomeDiscarded // request could not be built; never retried
+)
+
+type sendResult struct {
+	outcome        outcome
+	responseStatus *int32
+	errorKind      string
+}
+
+func errorKind(err error) string {
+	var dnsErr *net.DNSError
+	var netErr net.Error
+	switch {
+	// case errors.Is(err, netguard.ErrBlocked):
+	// 	return "blocked"
+	case errors.As(err, &dnsErr):
+		return "dns"
+	case errors.As(err, &netErr) && netErr.Timeout():
+		return "timeout"
+	case errors.Is(err, syscall.ECONNREFUSED):
+		return "conn_refused"
+	}
+	return "other"
+}
+
+func (s *Service) Send(ctx context.Context, job sqlc.GetClaimRow) sendResult {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, job.Url, bytes.NewReader(job.Payload))
 	if err != nil {
 		s.Log.Warn("build request", "delivery_id", job.DeliveryID.String(), "error", err)
-		return false
+		return sendResult{
+			outcome:   outcomeDiscarded,
+			errorKind: "invalid_request",
+		}
 	}
 
 	req.Header.Set("Content-Type", "application/json")
@@ -62,7 +122,10 @@ func (s *Service) Send(ctx context.Context, job sqlc.GetClaimRow) bool {
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
 		s.Log.Warn("send request", "delivery_id", job.DeliveryID.String(), "error", err)
-		return false
+		return sendResult{
+			outcome:   outcomeEndpointFailed,
+			errorKind: errorKind(err),
+		}
 	}
 
 	defer func() {
@@ -71,25 +134,110 @@ func (s *Service) Send(ctx context.Context, job sqlc.GetClaimRow) bool {
 
 	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, maxDrainBytes))
 
-	return resp.StatusCode >= 200 && resp.StatusCode < 300
+	code := int32(resp.StatusCode)
+	result := sendResult{
+		outcome:        outcomeEndpointFailed,
+		responseStatus: &code,
+	}
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		result.outcome = outcomeSent
+	}
+
+	return result
 }
 
-func (s *Service) Record(ctx context.Context, job sqlc.GetClaimRow, ok bool) {
-	mark := s.q.MarkFailed
-	if ok {
-		mark = s.q.MarkSuccess
+func nextRetry(attemptsBefore int32) (wait time.Duration, ok bool) {
+	if attemptsBefore < 0 || int(attemptsBefore) >= len(retrySchedule) {
+		return 0, false
 	}
 
-	rows, err := mark(ctx, job.DeliveryID)
+	return retrySchedule[attemptsBefore], true
+}
+
+func (s *Service) Record(ctx context.Context, job sqlc.GetClaimRow, res sendResult) {
+	var code pgtype.Int4
+	if res.responseStatus != nil {
+		code = pgtype.Int4{
+			Int32: *res.responseStatus,
+			Valid: true,
+		}
+	}
+
+	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
-		s.Log.Error("record delivery", "delivery_id", job.DeliveryID.String(), "error", err)
+		s.Log.Error("begin record", "delivery_id", job.DeliveryID.String(), "error", err)
 		return
 	}
+	defer func() { _ = tx.Rollback(context.WithoutCancel(ctx)) }()
+	q := s.q.WithTx(tx)
 
-	if rows == 0 {
-		s.Log.Info("delivery no longer pending", "delivery_id", job.DeliveryID.String())
-		return
+	var (
+		rows   int64
+		status string
+	)
+
+	switch res.outcome {
+	case outcomeSent:
+		status = "succeeded"
+		rows, err = q.MarkSuccess(ctx, job.DeliveryID)
+	case outcomeDiscarded:
+		status = "failed"
+		rows, err = q.MarkFailed(ctx, job.DeliveryID)
+	case outcomeEndpointFailed:
+		if wait, ok := nextRetry(job.AttemptCount); ok {
+			status = "retry"
+			next := s.now().Add(s.jitter(wait)).UTC()
+			rows, err = q.RetryAttempt(ctx, sqlc.RetryAttemptParams{
+				ID:            job.DeliveryID,
+				NextAttemptAt: pgtype.Timestamptz{Time: next, Valid: true},
+			})
+		} else {
+			status = "failed"
+			rows, err = q.MarkFailed(ctx, job.DeliveryID)
+		}
 	}
 
-	s.Log.Info("delivery recorded", "delivery_id", job.DeliveryID.String(), "ok", ok)
+	if err == nil && rows > 0 {
+		var kind pgtype.Text
+		if res.errorKind != "" {
+			kind = pgtype.Text{
+				String: res.errorKind,
+				Valid:  true,
+			}
+		}
+
+		if err = q.CreateAttempt(ctx, sqlc.CreateAttemptParams{
+			DeliveryID:     job.DeliveryID,
+			ResponseStatus: code,
+			ErrorKind:      kind,
+		}); err != nil {
+			err = fmt.Errorf("insert attempt: %w", err)
+		}
+	}
+
+	if err == nil && rows > 0 {
+		if err = tx.Commit(ctx); err != nil {
+			err = fmt.Errorf("commit record: %w", err)
+		}
+	}
+
+	attrs := []any{
+		"delivery_id", job.DeliveryID.String(),
+		"attempt", job.AttemptCount + 1,
+		"outcome", status,
+		"error_kind", res.errorKind,
+	}
+
+	if res.responseStatus != nil {
+		attrs = append(attrs, "response_status", *res.responseStatus)
+	}
+
+	switch {
+	case err != nil:
+		s.Log.Error("record delivery outcome", append(attrs, "error", err)...)
+	case rows == 0:
+		s.Log.Warn("lease lost before recording outcome", attrs...)
+	default:
+		s.Log.Info("delivery attempt recorded", attrs...)
+	}
 }
