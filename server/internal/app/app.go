@@ -67,7 +67,7 @@ func RunWorker(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	defer pool.Close()
 
 	log.Info("worker started")
-	return worker.NewWorker(pool, log).Run(ctx)
+	return worker.NewWorker(pool, log, cfg.Development).Run(ctx)
 }
 
 func NewRouter(pool *pgxpool.Pool) http.Handler {

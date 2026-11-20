@@ -21,9 +21,9 @@ type Worker struct {
 	svc *Service
 }
 
-func NewWorker(pool *pgxpool.Pool, log *slog.Logger) *Worker {
+func NewWorker(pool *pgxpool.Pool, log *slog.Logger, development string) *Worker {
 	return &Worker{
-		svc: NewService(pool, log),
+		svc: NewService(pool, log, development),
 	}
 }
 

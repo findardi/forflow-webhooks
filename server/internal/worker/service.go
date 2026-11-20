@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/findardi/forflow-webhooks/server/db/store/sqlc"
+	"github.com/findardi/forflow-webhooks/server/internal/netguard"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -39,13 +40,19 @@ type Service struct {
 	jitter     func(time.Duration) time.Duration
 }
 
-func NewService(pool *pgxpool.Pool, log *slog.Logger) *Service {
+func NewService(pool *pgxpool.Pool, log *slog.Logger, development string) *Service {
+	var transport http.RoundTripper
+
+	if development == "dev" {
+		transport = netguard.NewTransport()
+	}
 	return &Service{
 		q:    sqlc.New(pool),
 		Pool: pool,
 		httpClient: &http.Client{
 			Timeout:       15 * time.Second,
 			CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+			Transport:     transport,
 		},
 		Log:    log,
 		now:    time.Now,
@@ -93,6 +100,8 @@ func errorKind(err error) string {
 	var dnsErr *net.DNSError
 	var netErr net.Error
 	switch {
+	case errors.Is(err, netguard.ErrBlocked):
+		return "blocked"
 	case errors.As(err, &dnsErr):
 		return "dns"
 	case errors.As(err, &netErr) && netErr.Timeout():
