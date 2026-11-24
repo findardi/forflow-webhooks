@@ -118,3 +118,25 @@ func (q *Queries) ListEndpointsByApplicationID(ctx context.Context, applicationI
 	}
 	return items, nil
 }
+
+const rotateSecret = `-- name: RotateSecret :execrows
+update endpoints
+    set previous_secret = secret,
+        previous_secret_expires_at = now() + interval '24 hours',
+        secret = $1
+where id = $2 and application_id = $3 and deleted_at is null
+`
+
+type RotateSecretParams struct {
+	Secret        []byte      `json:"secret"`
+	ID            pgtype.UUID `json:"id"`
+	ApplicationID pgtype.UUID `json:"application_id"`
+}
+
+func (q *Queries) RotateSecret(ctx context.Context, arg RotateSecretParams) (int64, error) {
+	result, err := q.db.Exec(ctx, rotateSecret, arg.Secret, arg.ID, arg.ApplicationID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}

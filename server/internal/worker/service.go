@@ -129,7 +129,11 @@ func (s *Service) Send(ctx context.Context, job sqlc.GetClaimRow) sendResult {
 	req.Header.Set("webhook-id", job.MessageID.String())
 	req.Header.Set("webhook-timestamp", signing.FormatTimestamp(ts))
 
-	req.Header.Set("webhook-signature", signing.Sign(job.Secret, job.MessageID.String(), ts, job.Payload))
+	secrets := [][]byte{job.Secret}
+	if job.PreviousSecret != nil {
+		secrets = append(secrets, job.PreviousSecret)
+	}
+	req.Header.Set("webhook-signature", signing.SignAll(secrets, job.MessageID.String(), ts, job.Payload))
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
 		kind := errorKind(err)

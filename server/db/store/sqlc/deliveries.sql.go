@@ -72,16 +72,18 @@ where d.id = (
 )
 and m.id = d.message_id
 and e.id = d.endpoint_id
-returning d.id as delivery_id, m.id as message_id, e.url, m.payload, d.attempt_count, e.secret
+returning d.id as delivery_id, m.id as message_id, e.url, m.payload, d.attempt_count, e.secret,
+    (case when e.previous_secret_expires_at > now() then e.previous_secret end)::bytea as previous_secret
 `
 
 type GetClaimRow struct {
-	DeliveryID   pgtype.UUID     `json:"delivery_id"`
-	MessageID    pgtype.UUID     `json:"message_id"`
-	Url          string          `json:"url"`
-	Payload      json.RawMessage `json:"payload"`
-	AttemptCount int32           `json:"attempt_count"`
-	Secret       []byte          `json:"secret"`
+	DeliveryID     pgtype.UUID     `json:"delivery_id"`
+	MessageID      pgtype.UUID     `json:"message_id"`
+	Url            string          `json:"url"`
+	Payload        json.RawMessage `json:"payload"`
+	AttemptCount   int32           `json:"attempt_count"`
+	Secret         []byte          `json:"secret"`
+	PreviousSecret []byte          `json:"previous_secret"`
 }
 
 func (q *Queries) GetClaim(ctx context.Context, maxPerEndpoint int32) (GetClaimRow, error) {
@@ -94,6 +96,7 @@ func (q *Queries) GetClaim(ctx context.Context, maxPerEndpoint int32) (GetClaimR
 		&i.Payload,
 		&i.AttemptCount,
 		&i.Secret,
+		&i.PreviousSecret,
 	)
 	return i, err
 }

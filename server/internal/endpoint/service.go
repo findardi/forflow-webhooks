@@ -143,3 +143,33 @@ func (s *Service) Delete(ctx context.Context, applicationID, endpointID string) 
 
 	return nil
 }
+
+func (s *Service) RotateSecret(ctx context.Context, applicationID, endpointID string) (RotateSecretResponse, error) {
+	appID, err := helper.ToUUID(applicationID)
+	if err != nil {
+		return RotateSecretResponse{}, fmt.Errorf("%w: %w", ErrInvalidApplicationID, err)
+	}
+
+	eID, err := helper.ToUUID(endpointID)
+	if err != nil {
+		return RotateSecretResponse{}, fmt.Errorf("%w: %w", ErrInvalidEndpointID, err)
+	}
+
+	secret := signing.GenerateSecret()
+
+	rows, err := s.q.RotateSecret(ctx, sqlc.RotateSecretParams{
+		Secret:        secret,
+		ID:            eID,
+		ApplicationID: appID,
+	})
+
+	if err != nil {
+		return RotateSecretResponse{}, fmt.Errorf("rotate secret: %w", err)
+	}
+
+	if rows == 0 {
+		return RotateSecretResponse{}, ErrEndpointNotFound
+	}
+
+	return RotateSecretResponse{Secret: signing.EncodeSecret(secret)}, nil
+}

@@ -11,3 +11,7 @@ type CreateResponse struct {
 	Secret string                 `json:"secret"`
 	Result sqlc.CreateEndpointRow `json:"result"`
 }
+
+type RotateSecretResponse struct {
+	Secret string `json:"secret"`
+}

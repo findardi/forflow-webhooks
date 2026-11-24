@@ -104,6 +104,7 @@ func registerEndpointRoutes(mux *http.ServeMux, pool *pgxpool.Pool) {
 	mux.HandleFunc("POST /applications/{appID}/endpoints", h.Create)
 	mux.HandleFunc("GET /applications/{appID}/endpoints", h.List)
 	mux.HandleFunc("DELETE /applications/{appID}/endpoints/{endpointID}", h.Delete)
+	mux.HandleFunc("POST /applications/{appID}/endpoints/{endpointID}/secret/rotate", h.RotateSecret)
 }
 
 func registerMessageRoutes(mux *http.ServeMux, pool *pgxpool.Pool) {

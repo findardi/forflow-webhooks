@@ -54,6 +54,16 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func (h *Handler) RotateSecret(w http.ResponseWriter, r *http.Request) {
+	result, err := h.svc.RotateSecret(r.Context(), r.PathValue("appID"), r.PathValue("endpointID"))
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+
+	helper.WriteJSON(w, http.StatusOK, result)
+}
+
 func writeError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, ErrInvalidURL), errors.Is(err, ErrInvalidApplicationID), errors.Is(err, ErrInvalidEndpointID):
