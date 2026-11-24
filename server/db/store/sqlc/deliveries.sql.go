@@ -72,7 +72,7 @@ where d.id = (
 )
 and m.id = d.message_id
 and e.id = d.endpoint_id
-returning d.id as delivery_id, m.id as message_id, e.url, m.payload, d.attempt_count
+returning d.id as delivery_id, m.id as message_id, e.url, m.payload, d.attempt_count, e.secret
 `
 
 type GetClaimRow struct {
@@ -81,6 +81,7 @@ type GetClaimRow struct {
 	Url          string          `json:"url"`
 	Payload      json.RawMessage `json:"payload"`
 	AttemptCount int32           `json:"attempt_count"`
+	Secret       []byte          `json:"secret"`
 }
 
 func (q *Queries) GetClaim(ctx context.Context, maxPerEndpoint int32) (GetClaimRow, error) {
@@ -92,6 +93,7 @@ func (q *Queries) GetClaim(ctx context.Context, maxPerEndpoint int32) (GetClaimR
 		&i.Url,
 		&i.Payload,
 		&i.AttemptCount,
+		&i.Secret,
 	)
 	return i, err
 }

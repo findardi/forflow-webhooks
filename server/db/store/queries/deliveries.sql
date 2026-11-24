@@ -37,7 +37,7 @@ where d.id = (
 )
 and m.id = d.message_id
 and e.id = d.endpoint_id
-returning d.id as delivery_id, m.id as message_id, e.url, m.payload, d.attempt_count;
+returning d.id as delivery_id, m.id as message_id, e.url, m.payload, d.attempt_count, e.secret;
 
 -- name: MarkSuccess :execrows
 update deliveries

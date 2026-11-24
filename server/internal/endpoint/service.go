@@ -8,6 +8,7 @@ import (
 
 	"github.com/findardi/forflow-webhooks/server/db/store/sqlc"
 	"github.com/findardi/forflow-webhooks/server/internal/helper"
+	"github.com/findardi/forflow-webhooks/server/internal/signing"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -51,38 +52,44 @@ func validateURL(raw string) error {
 	return nil
 }
 
-func (s *Service) Create(ctx context.Context, request CreateRequest) (sqlc.Endpoint, error) {
+func (s *Service) Create(ctx context.Context, request CreateRequest) (CreateResponse, error) {
 	if err := validateURL(request.URL); err != nil {
-		return sqlc.Endpoint{}, err
+		return CreateResponse{}, err
 	}
 
 	appID, err := helper.ToUUID(request.ApplicationID)
 	if err != nil {
-		return sqlc.Endpoint{}, fmt.Errorf("%w: %w", ErrInvalidApplicationID, err)
+		return CreateResponse{}, fmt.Errorf("%w: %w", ErrInvalidApplicationID, err)
 	}
+
+	secret := signing.GenerateSecret()
 
 	result, err := s.q.CreateEndpoint(ctx, sqlc.CreateEndpointParams{
 		ApplicationID: appID,
 		Url:           request.URL,
+		Secret:        secret,
 	})
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return sqlc.Endpoint{}, ErrApplicationNotFound
+			return CreateResponse{}, ErrApplicationNotFound
 		}
 
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-			return sqlc.Endpoint{}, ErrEndpointExists
+			return CreateResponse{}, ErrEndpointExists
 		}
 
-		return sqlc.Endpoint{}, fmt.Errorf("create endpoint: %w", err)
+		return CreateResponse{}, fmt.Errorf("create endpoint: %w", err)
 	}
 
-	return result, nil
+	return CreateResponse{
+		Secret: signing.EncodeSecret(secret),
+		Result: result,
+	}, nil
 }
 
-func (s *Service) ListByApplication(ctx context.Context, applicationID string) ([]sqlc.Endpoint, error) {
+func (s *Service) ListByApplication(ctx context.Context, applicationID string) ([]sqlc.ListEndpointsByApplicationIDRow, error) {
 	appID, err := helper.ToUUID(applicationID)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrInvalidApplicationID, err)

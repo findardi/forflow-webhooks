@@ -42,6 +42,7 @@ type Endpoint struct {
 	Url           string             `json:"url"`
 	CreatedAt     pgtype.Timestamptz `json:"created_at"`
 	DeletedAt     pgtype.Timestamptz `json:"deleted_at"`
+	Secret        []byte             `json:"secret"`
 }
 
 type Message struct {

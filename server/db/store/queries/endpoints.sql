@@ -1,15 +1,15 @@
 -- name: CreateEndpoint :one
 insert into endpoints
-    (application_id, url)
-select sqlc.arg(application_id), sqlc.arg(url)
+    (application_id, url, secret)
+select sqlc.arg(application_id), sqlc.arg(url), sqlc.arg(secret)
 where exists (
     select 1 from applications
     where id = sqlc.arg(application_id) and deleted_at is null
 )
-returning *;
+returning id, application_id, url, created_at, deleted_at;
 
 -- name: ListEndpointsByApplicationID :many
-select * from endpoints
+select id, application_id, url, created_at, deleted_at from endpoints
 where application_id = $1 and deleted_at is null
 order by created_at asc;
 
