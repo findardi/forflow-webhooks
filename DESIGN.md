@@ -122,10 +122,10 @@ Graphite and warm grays, with a single green key and an orange error signal.
 - **Title** (600, 18px): wordmark.
 - **Body** (400, 15px, 1.5): everything else; 600 marks current nav and selected row.
 - **Label** (600, 12px, 0.08em, uppercase, Graphite 2): panel headers and table column headers.
-- **Mono** (400, 13px): URLs and IDs only.
+- **Mono** (400, 13px): URLs, IDs, and signing secrets only.
 
 ### Named Rules
-**The Mono-Is-Data Rule.** JetBrains Mono is used for URLs and IDs and nothing else.
+**The Mono-Is-Data Rule.** JetBrains Mono is used for URLs, IDs, and signing secrets, and nothing else.
 **The UTC Rule.** Dates render in UTC and say so ("Created (UTC)", "… UTC"). Counts and times use tabular numerals.
 
 ## Layout
@@ -184,6 +184,10 @@ Modest rounding: 10px on panels, 6px on controls. Borders are always 1px. Error 
 
 ### Dot Grille
 - Radial dots (1.6px, Grille Dot) on an 8px pitch. Used only as the empty-state and error-page mark, decorative (`aria-hidden`).
+
+### Signing secret
+- **Reveal:** after "Add endpoint", a Sunk Panel strip under the add form; after a rotation, the same block inside that endpoint's row expansion. It shows a Label ("Endpoint added" or "Secret rotated"), the endpoint URL in mono (strip only; the row already shows it), and the `whsec_` secret in a read-only mono field, focused and selected, with a ghost "Copy secret" beside it. A note says it is shown once (and, after a rotation, that the previous secret keeps signing for 24 hours). A quiet "Done" text button dismisses it and returns focus to the trigger. Escape does not dismiss it, and a reload does not bring it back.
+- **Rotate:** a quiet "Rotate secret" text button sits before "Delete" in the endpoint row (stacked under 800px). It expands that row in place: the row and a full-width cell under it turn Sunk Panel with no rule between them, holding a Label, the 24-hour overlap in plain words, a ghost "Rotate secret" commit, and a quiet Cancel. Escape cancels. No green: "Add endpoint" keeps the key.
 
 ### Destructive actions
 - **Endpoint row:** a quiet "Delete" text button arms the row (Matte Ground fill). Confirm (Danger) appears to its left and Cancel takes the trigger's spot, so a double click cancels. Escape cancels.

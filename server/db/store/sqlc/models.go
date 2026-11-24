@@ -37,11 +37,14 @@ type Delivery struct {
 }
 
 type Endpoint struct {
-	ID            pgtype.UUID        `json:"id"`
-	ApplicationID pgtype.UUID        `json:"application_id"`
-	Url           string             `json:"url"`
-	CreatedAt     pgtype.Timestamptz `json:"created_at"`
-	DeletedAt     pgtype.Timestamptz `json:"deleted_at"`
+	ID                      pgtype.UUID        `json:"id"`
+	ApplicationID           pgtype.UUID        `json:"application_id"`
+	Url                     string             `json:"url"`
+	CreatedAt               pgtype.Timestamptz `json:"created_at"`
+	DeletedAt               pgtype.Timestamptz `json:"deleted_at"`
+	Secret                  []byte             `json:"secret"`
+	PreviousSecret          []byte             `json:"previous_secret"`
+	PreviousSecretExpiresAt pgtype.Timestamptz `json:"previous_secret_expires_at"`
 }
 
 type Message struct {

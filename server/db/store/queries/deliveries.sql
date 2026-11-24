@@ -37,7 +37,8 @@ where d.id = (
 )
 and m.id = d.message_id
 and e.id = d.endpoint_id
-returning d.id as delivery_id, m.id as message_id, e.url, m.payload, d.attempt_count;
+returning d.id as delivery_id, m.id as message_id, e.url, m.payload, d.attempt_count, e.secret,
+    (case when e.previous_secret_expires_at > now() then e.previous_secret end)::bytea as previous_secret;
 
 -- name: MarkSuccess :execrows
 update deliveries

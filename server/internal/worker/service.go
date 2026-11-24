@@ -15,6 +15,7 @@ import (
 
 	"github.com/findardi/forflow-webhooks/server/db/store/sqlc"
 	"github.com/findardi/forflow-webhooks/server/internal/netguard"
+	"github.com/findardi/forflow-webhooks/server/internal/signing"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -41,11 +42,11 @@ type Service struct {
 }
 
 func NewService(pool *pgxpool.Pool, log *slog.Logger, development string) *Service {
-	var transport http.RoundTripper
-
+	var transport http.RoundTripper = netguard.NewTransport()
 	if development == "dev" {
-		transport = netguard.NewTransport()
+		transport = http.DefaultTransport
 	}
+
 	return &Service{
 		q:    sqlc.New(pool),
 		Pool: pool,
@@ -122,9 +123,17 @@ func (s *Service) Send(ctx context.Context, job sqlc.GetClaimRow) sendResult {
 		}
 	}
 
+	ts := s.now()
+
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("webhook-id", job.MessageID.String())
+	req.Header.Set("webhook-timestamp", signing.FormatTimestamp(ts))
 
+	secrets := [][]byte{job.Secret}
+	if job.PreviousSecret != nil {
+		secrets = append(secrets, job.PreviousSecret)
+	}
+	req.Header.Set("webhook-signature", signing.SignAll(secrets, job.MessageID.String(), ts, job.Payload))
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
 		kind := errorKind(err)

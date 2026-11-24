@@ -4,8 +4,10 @@ import {
 	api,
 	ApiError,
 	type Application,
+	type CreatedEndpoint,
 	type DeliveredMessage,
 	type Endpoint,
+	type EndpointSecret,
 	type Message
 } from '#lib/server/api.ts';
 
@@ -52,15 +54,46 @@ export const actions = {
 		const url = String((await request.formData()).get('url') ?? '').trim();
 		if (!url) return fail(400, { url, message: messages[400] });
 
+		let created: CreatedEndpoint;
 		try {
-			await api<Endpoint>(fetch, `/applications/${params.id}/endpoints`, { url });
+			created = await api<CreatedEndpoint>(fetch, `/applications/${params.id}/endpoints`, { url });
 		} catch (e) {
 			if (e instanceof ApiError && messages[e.status]) {
 				return fail(e.status, { url, message: messages[e.status] });
 			}
 			throw e;
 		}
-		return { added: url };
+		return {
+			reveal: {
+				kind: 'created' as const,
+				endpointId: created.result.id,
+				url: created.result.url,
+				secret: created.secret
+			}
+		};
+	},
+	rotateSecret: async ({ request, fetch, params }) => {
+		const data = await request.formData();
+		const id = String(data.get('endpoint_id') ?? '');
+		const url = String(data.get('url') ?? '');
+
+		let rotated: EndpointSecret;
+		try {
+			rotated = await api<EndpointSecret>(
+				fetch,
+				`/applications/${params.id}/endpoints/${id}/secret/rotate`,
+				undefined,
+				'POST'
+			);
+		} catch (e) {
+			if (e instanceof ApiError && (e.status === 400 || e.status === 404)) {
+				return fail(404, { rotate: id, message: 'This endpoint no longer exists.' });
+			}
+			throw e;
+		}
+		return {
+			reveal: { kind: 'rotated' as const, endpointId: id, url, secret: rotated.secret }
+		};
 	},
 	send: async ({ request, fetch, params }) => {
 		const raw = String((await request.formData()).get('payload') ?? '').trim();

@@ -13,8 +13,8 @@ import (
 
 const createEndpoint = `-- name: CreateEndpoint :one
 insert into endpoints
-    (application_id, url)
-select $1, $2
+    (application_id, url, secret)
+select $1, $2, $3
 where exists (
     select 1 from applications
     where id = $1 and deleted_at is null
@@ -25,11 +25,20 @@ returning id, application_id, url, created_at, deleted_at
 type CreateEndpointParams struct {
 	ApplicationID pgtype.UUID `json:"application_id"`
 	Url           string      `json:"url"`
+	Secret        []byte      `json:"secret"`
 }
 
-func (q *Queries) CreateEndpoint(ctx context.Context, arg CreateEndpointParams) (Endpoint, error) {
-	row := q.db.QueryRow(ctx, createEndpoint, arg.ApplicationID, arg.Url)
-	var i Endpoint
+type CreateEndpointRow struct {
+	ID            pgtype.UUID        `json:"id"`
+	ApplicationID pgtype.UUID        `json:"application_id"`
+	Url           string             `json:"url"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	DeletedAt     pgtype.Timestamptz `json:"deleted_at"`
+}
+
+func (q *Queries) CreateEndpoint(ctx context.Context, arg CreateEndpointParams) (CreateEndpointRow, error) {
+	row := q.db.QueryRow(ctx, createEndpoint, arg.ApplicationID, arg.Url, arg.Secret)
+	var i CreateEndpointRow
 	err := row.Scan(
 		&i.ID,
 		&i.ApplicationID,
@@ -76,15 +85,23 @@ where application_id = $1 and deleted_at is null
 order by created_at asc
 `
 
-func (q *Queries) ListEndpointsByApplicationID(ctx context.Context, applicationID pgtype.UUID) ([]Endpoint, error) {
+type ListEndpointsByApplicationIDRow struct {
+	ID            pgtype.UUID        `json:"id"`
+	ApplicationID pgtype.UUID        `json:"application_id"`
+	Url           string             `json:"url"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	DeletedAt     pgtype.Timestamptz `json:"deleted_at"`
+}
+
+func (q *Queries) ListEndpointsByApplicationID(ctx context.Context, applicationID pgtype.UUID) ([]ListEndpointsByApplicationIDRow, error) {
 	rows, err := q.db.Query(ctx, listEndpointsByApplicationID, applicationID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Endpoint{}
+	items := []ListEndpointsByApplicationIDRow{}
 	for rows.Next() {
-		var i Endpoint
+		var i ListEndpointsByApplicationIDRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.ApplicationID,
@@ -100,4 +117,26 @@ func (q *Queries) ListEndpointsByApplicationID(ctx context.Context, applicationI
 		return nil, err
 	}
 	return items, nil
+}
+
+const rotateSecret = `-- name: RotateSecret :execrows
+update endpoints
+    set previous_secret = secret,
+        previous_secret_expires_at = now() + interval '24 hours',
+        secret = $1
+where id = $2 and application_id = $3 and deleted_at is null
+`
+
+type RotateSecretParams struct {
+	Secret        []byte      `json:"secret"`
+	ID            pgtype.UUID `json:"id"`
+	ApplicationID pgtype.UUID `json:"application_id"`
+}
+
+func (q *Queries) RotateSecret(ctx context.Context, arg RotateSecretParams) (int64, error) {
+	result, err := q.db.Exec(ctx, rotateSecret, arg.Secret, arg.ID, arg.ApplicationID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
