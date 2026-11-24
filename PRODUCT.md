@@ -31,8 +31,9 @@ API available today (Go, `server/internal/app/app.go`):
 
 - `POST /applications` with `{ name }`. Name is required, trimmed, max 100 characters. 400 on invalid name.
 - `GET /applications`. Lists all applications, oldest first.
-- `POST /applications/{appID}/endpoints` with `{ url }`. 400 invalid URL or app ID, 404 application not found, 409 endpoint URL already exists for that application.
-- `GET /applications/{appID}/endpoints`. Lists endpoints, oldest first.
+- `POST /applications/{appID}/endpoints` with `{ url }`. Returns `{ secret, result }`: the `whsec_` signing secret, shown only in this response, and the endpoint. 400 invalid URL or app ID, 404 application not found, 409 endpoint URL already exists for that application.
+- `GET /applications/{appID}/endpoints`. Lists endpoints, oldest first. Never includes the secret.
+- `POST /applications/{appID}/endpoints/{endpointID}/secret/rotate`. Returns `{ secret }`, the new signing secret, shown only in this response. The previous secret keeps signing for 24 hours; rotating again inside that window ends it immediately. 400 invalid ID, 404 endpoint not found or deleted.
 - `DELETE /applications/{appID}` and `DELETE /applications/{appID}/endpoints/{endpointID}`. Soft delete; deleting an application deletes its endpoints. Either way, pending deliveries of the removed endpoints become `canceled`; succeeded and failed stay.
 - `POST /applications/{appID}/messages` with `{ payload }` (any JSON value except null, request body under 4 KB). Creates one `pending` delivery per live endpoint in the same transaction. 400 invalid payload or app ID, 404 application not found.
 - `GET /applications/{appID}/endpoints/{endpointID}/messages`. Messages delivered to that endpoint with their `delivery_status` (`pending`, `succeeded`, `failed`, `canceled`), oldest first.

@@ -15,6 +15,10 @@ export type Endpoint = {
 	created_at: string;
 };
 
+export type EndpointSecret = { secret: string };
+
+export type CreatedEndpoint = EndpointSecret & { result: Endpoint };
+
 export type Message = {
 	id: string;
 	application_id: string;
